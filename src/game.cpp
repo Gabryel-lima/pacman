@@ -249,9 +249,19 @@ void Game::update() {
                 if (checkScoreWon()) {
                     gameMode = WON;
                 } else {
+                    // Validar estado antes de mover
+                    if (pacman->partial < 0 || pacman->partial > 5) {
+                        pacman->partial = 0;
+                    }
+                    
                     movePacman();
+                    
                     for (int i = 0; i < 4; i++) {
                         if (phantoms[i]) {
+                            // Validar estado antes de mover
+                            if (phantoms[i]->partial < 0 || phantoms[i]->partial > 5) {
+                                phantoms[i]->partial = 0;
+                            }
                             movePhantom(phantoms[i]);
                         }
                     }

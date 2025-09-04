@@ -64,6 +64,7 @@ struct Pacman {
     int xl, yl;  // posições anteriores
     int x, y;    // posições dinâmicas
     int direction, step, partial;
+    int nextDirection;  // próxima direção solicitada
     int points;
     int power;
     int life;

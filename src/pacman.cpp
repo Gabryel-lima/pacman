@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <algorithm>
+#include <iostream>
 
 // Implementação dos métodos do jogo
 
@@ -43,6 +44,7 @@ Pacman* Game::createPacman(int x, int y) {
     pac->xl = x;
     pac->yl = y;
     pac->direction = RIGHT;
+    pac->nextDirection = RIGHT;  // Inicializar próxima direção
     pac->step = 0;
     pac->partial = 0;
     pac->points = 0;
@@ -101,9 +103,36 @@ void Game::drawScene() {
 void Game::drawPacman() {
     if (!pacman) return;
     
+    // Validar coordenadas e partial antes de desenhar
+    int safeX = pacman->x;
+    int safeY = pacman->y;
+    int safePartial = pacman->partial;
+    
+    // Garantir que as coordenadas estejam dentro dos limites
+    if (safeX < 0) safeX = 0;
+    if (safeX >= MAP_SIZE) safeX = MAP_SIZE - 1;
+    if (safeY < 0) safeY = 0;
+    if (safeY >= MAP_SIZE) safeY = MAP_SIZE - 1;
+    
+    // Garantir que partial esteja no range válido
+    if (safePartial < 0) safePartial = 0;
+    if (safePartial > 4) safePartial = 4;
+    
+    // Calcular offset baseado na direção
+    int offsetX = 0, offsetY = 0;
+    if (safePartial > 0) {
+        int offset = safePartial * CELL_SIZE / 5;
+        switch (pacman->direction) {
+            case RIGHT: offsetX = offset; break;
+            case LEFT:  offsetX = -offset; break;
+            case DOWN:  offsetY = offset; break;
+            case UP:    offsetY = -offset; break;
+        }
+    }
+    
     SDL_Rect destRect = {
-        pacman->x * CELL_SIZE + pacman->partial * CELL_SIZE / 5,
-        pacman->y * CELL_SIZE + pacman->partial * CELL_SIZE / 5,
+        safeX * CELL_SIZE + offsetX,
+        safeY * CELL_SIZE + offsetY,
         CELL_SIZE,
         CELL_SIZE
     };
@@ -118,9 +147,36 @@ void Game::drawPacman() {
 void Game::drawPhantom(Phantom* phantom) {
     if (!phantom) return;
     
+    // Validar coordenadas e partial antes de desenhar
+    int safeX = phantom->x;
+    int safeY = phantom->y;
+    int safePartial = phantom->partial;
+    
+    // Garantir que as coordenadas estejam dentro dos limites
+    if (safeX < 0) safeX = 0;
+    if (safeX >= MAP_SIZE) safeX = MAP_SIZE - 1;
+    if (safeY < 0) safeY = 0;
+    if (safeY >= MAP_SIZE) safeY = MAP_SIZE - 1;
+    
+    // Garantir que partial esteja no range válido
+    if (safePartial < 0) safePartial = 0;
+    if (safePartial > 4) safePartial = 4;
+    
+    // Calcular offset baseado na direção
+    int offsetX = 0, offsetY = 0;
+    if (safePartial > 0) {
+        int offset = safePartial * CELL_SIZE / 5;
+        switch (phantom->direction) {
+            case RIGHT: offsetX = offset; break;
+            case LEFT:  offsetX = -offset; break;
+            case DOWN:  offsetY = offset; break;
+            case UP:    offsetY = -offset; break;
+        }
+    }
+    
     SDL_Rect destRect = {
-        phantom->x * CELL_SIZE + phantom->partial * CELL_SIZE / 5,
-        phantom->y * CELL_SIZE + phantom->partial * CELL_SIZE / 5,
+        safeX * CELL_SIZE + offsetX,
+        safeY * CELL_SIZE + offsetY,
         CELL_SIZE,
         CELL_SIZE
     };
@@ -160,45 +216,73 @@ void Game::alterDirectionPacman(int direction) {
     int newX = pacman->x + DIRECTIONS[direction].x;
     int newY = pacman->y + DIRECTIONS[direction].y;
     
-    // Verificar limites e obstáculos
-    if (newX >= 0 && newX < MAP_SIZE && newY >= 0 && newY < MAP_SIZE) {
-        if (scene->map[newY][newX] != OBSTACLE) {
-            pacman->direction = direction;
+    // Aplicar wraparound horizontal primeiro (apenas para direções horizontais)
+    if (direction == LEFT || direction == RIGHT) {
+        if (newX < 0) {
+            newX = MAP_SIZE - 1;
+        } else if (newX >= MAP_SIZE) {
+            newX = 0;
         }
     }
     
-    // Wraparound horizontal
-    if (newX < 0) {
-        pacman->x = MAP_SIZE - 1;
-        pacman->direction = direction;
-    } else if (newX >= MAP_SIZE) {
-        pacman->x = 0;
-        pacman->direction = direction;
+    // Verificar limites verticais
+    if (newY >= 0 && newY < MAP_SIZE) {
+        // Verificar se não é obstáculo
+        if (scene->map[newY][newX] != OBSTACLE) {
+            pacman->nextDirection = direction;
+        }
     }
 }
 
 void Game::movePacman() {
     if (!pacman || !scene) return;
     
+    // Validar e corrigir partial se necessário
+    if (pacman->partial < 0) pacman->partial = 0;
+    if (pacman->partial > 5) pacman->partial = 0;
+    
     pacman->partial++;
     
     if (pacman->partial >= 5) {  // Movimento completo
-        pacman->partial = 0;
+        // Aplicar a próxima direção se for diferente da atual
+        if (pacman->nextDirection != pacman->direction) {
+            pacman->direction = pacman->nextDirection;
+        }
+        
+        pacman->partial = 0;  // Reset seguro
         pacman->xl = pacman->x;
         pacman->yl = pacman->y;
+        
+        // Validar coordenadas atuais
+        if (pacman->x < 0) pacman->x = 0;
+        if (pacman->x >= MAP_SIZE) pacman->x = MAP_SIZE - 1;
+        if (pacman->y < 0) pacman->y = 0;
+        if (pacman->y >= MAP_SIZE) pacman->y = MAP_SIZE - 1;
         
         int newX = pacman->x + DIRECTIONS[pacman->direction].x;
         int newY = pacman->y + DIRECTIONS[pacman->direction].y;
         
-        // Wraparound horizontal
-        if (newX < 0) {
-            newX = MAP_SIZE - 1;
-        } else if (newX >= MAP_SIZE) {
-            newX = 0;
+        // Aplicar wraparound horizontal primeiro (apenas para direções horizontais)
+        if (pacman->direction == LEFT || pacman->direction == RIGHT) {
+            if (newX < 0) {
+                newX = MAP_SIZE - 1;
+            } else if (newX >= MAP_SIZE) {
+                newX = 0;
+            }
         }
         
         // Verificar se pode mover
-        if (newY >= 0 && newY < MAP_SIZE && scene->map[newY][newX] != OBSTACLE) {
+        bool canMove = false;
+        
+        // Verificar limites verticais
+        if (newY >= 0 && newY < MAP_SIZE) {
+            // Verificar se não é obstáculo
+            if (scene->map[newY][newX] != OBSTACLE) {
+                canMove = true;
+            }
+        }
+        
+        if (canMove) {
             pacman->x = newX;
             pacman->y = newY;
             
@@ -227,46 +311,81 @@ void Game::movePacman() {
 void Game::movePhantom(Phantom* phantom) {
     if (!phantom || !scene) return;
     
+    // Validar e corrigir partial se necessário
+    if (phantom->partial < 0) phantom->partial = 0;
+    if (phantom->partial > 5) phantom->partial = 0;
+    
     phantom->partial++;
     
     if (phantom->partial >= 5) {  // Movimento completo
-        phantom->partial = 0;
+        phantom->partial = 0;  // Reset seguro
         phantom->xl = phantom->x;
         phantom->yl = phantom->y;
+        
+        // Validar coordenadas atuais
+        if (phantom->x < 0) phantom->x = 0;
+        if (phantom->x >= MAP_SIZE) phantom->x = MAP_SIZE - 1;
+        if (phantom->y < 0) phantom->y = 0;
+        if (phantom->y >= MAP_SIZE) phantom->y = MAP_SIZE - 1;
         
         // Lógica simples de movimento para os fantasmas
         // Tentar mover na direção atual
         int newX = phantom->x + DIRECTIONS[phantom->direction].x;
         int newY = phantom->y + DIRECTIONS[phantom->direction].y;
         
-        // Wraparound horizontal
-        if (newX < 0) {
-            newX = MAP_SIZE - 1;
-        } else if (newX >= MAP_SIZE) {
-            newX = 0;
+        // Aplicar wraparound horizontal primeiro (apenas para direções horizontais)
+        if (phantom->direction == LEFT || phantom->direction == RIGHT) {
+            if (newX < 0) {
+                newX = MAP_SIZE - 1;
+            } else if (newX >= MAP_SIZE) {
+                newX = 0;
+            }
+        }
+        
+        // Verificar se pode mover na direção atual
+        bool canMove = false;
+        
+        // Verificar limites verticais
+        if (newY >= 0 && newY < MAP_SIZE) {
+            // Verificar se não é obstáculo
+            if (scene->map[newY][newX] != OBSTACLE) {
+                canMove = true;
+            }
         }
         
         // Se não pode mover, escolher nova direção
-        if (newY < 0 || newY >= MAP_SIZE || scene->map[newY][newX] == OBSTACLE) {
+        if (!canMove) {
             // Tentar outras direções
             for (int i = 0; i < 4; i++) {
                 int testX = phantom->x + DIRECTIONS[i].x;
                 int testY = phantom->y + DIRECTIONS[i].y;
                 
-                if (testX < 0) testX = MAP_SIZE - 1;
-                if (testX >= MAP_SIZE) testX = 0;
+                // Aplicar wraparound horizontal primeiro (apenas para direções horizontais)
+                if (i == LEFT || i == RIGHT) {
+                    if (testX < 0) testX = MAP_SIZE - 1;
+                    if (testX >= MAP_SIZE) testX = 0;
+                }
                 
-                if (testY >= 0 && testY < MAP_SIZE && scene->map[testY][testX] != OBSTACLE) {
-                    phantom->direction = i;
-                    newX = testX;
-                    newY = testY;
-                    break;
+                // Verificar limites verticais
+                if (testY >= 0 && testY < MAP_SIZE) {
+                    // Verificar se pode mover nesta direção
+                    if (scene->map[testY][testX] != OBSTACLE) {
+                        phantom->direction = i;
+                        newX = testX;
+                        newY = testY;
+                        canMove = true;
+                        break;
+                    }
                 }
             }
         }
         
-        phantom->x = newX;
-        phantom->y = newY;
+        // Só mover se for possível
+        if (canMove) {
+            phantom->x = newX;
+            phantom->y = newY;
+        }
+        
         phantom->step++;
         
         // Verificar colisão com Pacman
