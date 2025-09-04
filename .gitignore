@@ -1,0 +1,115 @@
+# Arquivos executáveis
+pacman_game
+*.exe
+*.out
+*.app
+
+# Arquivos de build
+build/
+*.o
+*.a
+*.so
+*.dll
+*.dylib
+
+# Arquivos de debug
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# Arquivos temporários do compilador
+*.d
+*.dep
+*.tmp
+*.temp
+*.cache
+
+# Arquivos do sistema
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*~
+
+# Arquivos do editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.cproject
+.settings/
+
+# Arquivos de backup
+*.bak
+*.backup
+*.old
+*.orig
+
+# Logs
+*.log
+
+# Core dumps
+core
+*.core
+
+# Arquivos de profiling
+gmon.out
+*.prof
+
+# Arquivos de coverage
+*.gcov
+*.gcda
+*.gcno
+lcov.info
+coverage/
+
+# Arquivos de análise estática
+.clang_complete
+.ycm_extra_conf.py
+
+# Arquivos de dependências automáticas
+.depend
+*.dep
+
+# Arquivos específicos do CMake (caso seja usado no futuro)
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile.cmake
+*.cmake
+
+# Arquivos de teste
+test_*
+*_test
+
+# Documentação gerada
+doc/
+docs/html/
+docs/latex/
+
+# Arquivos de configuração local
+config.local
+*.local
+
+# Arquivos de patch
+*.patch
+*.diff
+
+# Arquivos de distribuição
+dist/
+*.tar.gz
+*.zip
+*.rar
+
+# Arquivos específicos do Valgrind
+*.valgrind
+vgcore.*
+
+# Arquivos de sanitizer
+*.san
