@@ -87,6 +87,28 @@ pacman/
 └── README.md           # Este arquivo
 ```
 
+## ✨ Correções Implementadas
+
+Este projeto foi completamente revisado e corrigido para garantir funcionalidade perfeita:
+
+### 🔧 Correções de Sprites
+* **Caminhos absolutos**: Corrigidos os caminhos dos sprites para funcionar em qualquer diretório
+* **Indexação do Pacman**: Corrigida a lógica de seleção de sprites baseada em direção e animação
+* **Indexação dos fantasmas**: Implementado sistema correto para sprites baseado em ID, direção e status
+* **Mapeamento do cenário**: Corrigido mapeamento entre tipos de cena e sprites correspondentes
+
+### 🎮 Correções de Lógica
+* **Inicialização**: Corrigidas posições iniciais do Pacman e fantasmas
+* **Movimento**: Melhorada lógica de movimento com interpolação suave
+* **Colisões**: Sistema de colisão mais preciso entre Pacman e fantasmas
+* **Estados dos fantasmas**: Implementados corretamente os estados CAPTURE, ESCAPE e DEAD
+* **Ressurreição**: Fantasmas mortos ressuscitam após um tempo determinado
+
+### 🖥️ Melhorias de Interface
+* **HUD**: Adicionado sistema de pontuação em tempo real
+* **Informações**: Exibição de moedas restantes e status do poder
+* **Feedback visual**: Melhor feedback para ações do jogador
+
 ## Melhorias implementadas na versão Python
 
 * **Arquitetura orientada a objetos**: Código mais organizado e manutenível
