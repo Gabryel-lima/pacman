@@ -18,8 +18,12 @@ class PacMan:
         self.black = BLACK
         self.blue = BLUE
         
+        # Calcular dimensões da janela baseado no parâmetro scale
+        window_width = scale * 27.5
+        window_height = scale * 35
+        
         # Configurar janela
-        self.window = pg.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+        self.window = pg.display.set_mode((window_width, window_height))
         pg.display.set_caption("Pac-Man")
         
         # Configurar fonte
@@ -45,16 +49,16 @@ class PacMan:
         self.harmless_mode_ghost_pink = False
         self.harmless_mode_ghost_red = False
         
-        # Posições e direções do Pacman
-        self.pac_man_pos = PACMAN_START_POS.copy()
-        self.pac_man_direction = PACMAN_START_DIR.copy()
-        self.pac_man_next_direction = PACMAN_START_DIR.copy()
+        # Posições e direções do Pacman (calculadas dinamicamente)
+        self.pac_man_pos = [scale * 13.1, scale * 22.6]
+        self.pac_man_direction = [scale/16, 0]
+        self.pac_man_next_direction = [scale/16, 0]
         
-        # Posições e direções dos fantasmas
-        self.ghost_blue_pos = GHOST_BLUE_POS.copy()
-        self.ghost_orange_pos = GHOST_ORANGE_POS.copy()
-        self.ghost_pink_pos = GHOST_PINK_POS.copy()
-        self.ghost_red_pos = GHOST_RED_POS.copy()
+        # Posições e direções dos fantasmas (calculadas dinamicamente)
+        self.ghost_blue_pos = [scale * 12, scale * 13]
+        self.ghost_orange_pos = [scale * 12, scale * 14.5]
+        self.ghost_pink_pos = [scale * 14, scale * 13]
+        self.ghost_red_pos = [scale * 14, scale * 14.5]
         
         self.ghost_blue_direction = [0, 0]
         self.ghost_orange_direction = [0, 0]
@@ -558,7 +562,7 @@ class PacMan:
     def ghost(self):
         """Atualiza e move todos os fantasmas"""
         # Fantasma azul
-        if self.ghost_blue_pos != GHOST_BLUE_POS:
+        if self.ghost_blue_pos != [self.scale * 12, self.scale * 13]:
             input_1 = self.ghost_blue_pos
             input_2 = self.ghost_blue_direction
             input_3 = self.ghost_blue_next_direction
@@ -571,7 +575,7 @@ class PacMan:
             self.distance_ghost_blue_to_pac_man = output_4
         
         # Fantasma laranja
-        if self.ghost_orange_pos != GHOST_ORANGE_POS:
+        if self.ghost_orange_pos != [self.scale * 12, self.scale * 14.5]:
             input_1 = self.ghost_orange_pos
             input_2 = self.ghost_orange_direction
             input_3 = self.ghost_orange_next_direction
@@ -584,7 +588,7 @@ class PacMan:
             self.distance_ghost_orange_to_pac_man = output_4
         
         # Fantasma rosa
-        if self.ghost_pink_pos != GHOST_PINK_POS:
+        if self.ghost_pink_pos != [self.scale * 14, self.scale * 13]:
             input_1 = self.ghost_pink_pos
             input_2 = self.ghost_pink_direction
             input_3 = self.ghost_pink_next_direction
@@ -597,7 +601,7 @@ class PacMan:
             self.distance_ghost_pink_to_pac_man = output_4
         
         # Fantasma vermelho
-        if self.ghost_red_pos != GHOST_RED_POS:
+        if self.ghost_red_pos != [self.scale * 14, self.scale * 14.5]:
             input_1 = self.ghost_red_pos
             input_2 = self.ghost_red_direction
             input_3 = self.ghost_red_next_direction
@@ -664,13 +668,13 @@ class PacMan:
         
         # Mover fantasmas para o jogo quando necessário
         if self.sprite_frame == 60:
-            if self.ghost_blue_pos == GHOST_BLUE_POS:
+            if self.ghost_blue_pos == [self.scale * 12, self.scale * 13]:
                 self.moving_ghost_into_the_game('blue')
-            elif self.ghost_orange_pos == GHOST_ORANGE_POS:
+            elif self.ghost_orange_pos == [self.scale * 12, self.scale * 14.5]:
                 self.moving_ghost_into_the_game('orange')
-            elif self.ghost_pink_pos == GHOST_PINK_POS:
+            elif self.ghost_pink_pos == [self.scale * 14, self.scale * 13]:
                 self.moving_ghost_into_the_game('pink')
-            elif self.ghost_red_pos == GHOST_RED_POS:
+            elif self.ghost_red_pos == [self.scale * 14, self.scale * 14.5]:
                 self.moving_ghost_into_the_game('red')
     
     def ghost_and_pacman_collider(self):
@@ -678,7 +682,7 @@ class PacMan:
         # Colisão com fantasma azul
         if self.distance_ghost_blue_to_pac_man <= COLLISION_DISTANCE:
             if self.harmless_mode_ghost_blue:
-                self.ghost_blue_pos = GHOST_BLUE_POS.copy()
+                self.ghost_blue_pos = [self.scale * 12, self.scale * 13]
                 self.harmless_mode_ghost_blue = False
                 self.distance_ghost_blue_to_pac_man = self.distance_ghost_to_pac_man(self.ghost_blue_pos)
                 self.score += GHOST_POINTS
@@ -692,7 +696,7 @@ class PacMan:
         # Colisão com fantasma laranja
         elif self.distance_ghost_orange_to_pac_man <= COLLISION_DISTANCE:
             if self.harmless_mode_ghost_orange:
-                self.ghost_orange_pos = GHOST_ORANGE_POS.copy()
+                self.ghost_orange_pos = [self.scale * 12, self.scale * 14.5]
                 self.harmless_mode_ghost_orange = False
                 self.distance_ghost_orange_to_pac_man = self.distance_ghost_to_pac_man(self.ghost_orange_pos)
                 self.score += GHOST_POINTS
@@ -706,7 +710,7 @@ class PacMan:
         # Colisão com fantasma rosa
         elif self.distance_ghost_pink_to_pac_man <= COLLISION_DISTANCE:
             if self.harmless_mode_ghost_pink:
-                self.ghost_pink_pos = GHOST_PINK_POS.copy()
+                self.ghost_pink_pos = [self.scale * 14, self.scale * 13]
                 self.harmless_mode_ghost_pink = False
                 self.distance_ghost_pink_to_pac_man = self.distance_ghost_to_pac_man(self.ghost_pink_pos)
                 self.score += GHOST_POINTS
@@ -720,7 +724,7 @@ class PacMan:
         # Colisão com fantasma vermelho
         elif self.distance_ghost_red_to_pac_man <= COLLISION_DISTANCE:
             if self.harmless_mode_ghost_red:
-                self.ghost_red_pos = GHOST_RED_POS.copy()
+                self.ghost_red_pos = [self.scale * 14, self.scale * 14.5]
                 self.harmless_mode_ghost_red = False
                 self.distance_ghost_red_to_pac_man = self.distance_ghost_to_pac_man(self.ghost_red_pos)
                 self.score += GHOST_POINTS
@@ -741,13 +745,13 @@ class PacMan:
             self.harmless_mode_ghost_orange = False
             self.harmless_mode_ghost_pink = False
             self.harmless_mode_ghost_red = False
-            self.pac_man_pos = PACMAN_START_POS.copy()
-            self.pac_man_direction = PACMAN_START_DIR.copy()
-            self.pac_man_next_direction = PACMAN_START_DIR.copy()
-            self.ghost_blue_pos = GHOST_BLUE_POS.copy()
-            self.ghost_orange_pos = GHOST_ORANGE_POS.copy()
-            self.ghost_pink_pos = GHOST_PINK_POS.copy()
-            self.ghost_red_pos = GHOST_RED_POS.copy()
+            self.pac_man_pos = [self.scale * 13.1, self.scale * 22.6]
+            self.pac_man_direction = [self.scale/16, 0]
+            self.pac_man_next_direction = [self.scale/16, 0]
+            self.ghost_blue_pos = [self.scale * 12, self.scale * 13]
+            self.ghost_orange_pos = [self.scale * 12, self.scale * 14.5]
+            self.ghost_pink_pos = [self.scale * 14, self.scale * 13]
+            self.ghost_red_pos = [self.scale * 14, self.scale * 14.5]
             self.distance_ghost_blue_to_pac_man = self.distance_ghost_to_pac_man(self.ghost_blue_pos)
             self.distance_ghost_orange_to_pac_man = self.distance_ghost_to_pac_man(self.ghost_orange_pos)
             self.distance_ghost_pink_to_pac_man = self.distance_ghost_to_pac_man(self.ghost_pink_pos)
@@ -770,13 +774,13 @@ class PacMan:
             self.harmless_mode_ghost_orange = False
             self.harmless_mode_ghost_pink = False
             self.harmless_mode_ghost_red = False
-            self.pac_man_pos = PACMAN_START_POS.copy()
-            self.pac_man_direction = PACMAN_START_DIR.copy()
-            self.pac_man_next_direction = PACMAN_START_DIR.copy()
-            self.ghost_blue_pos = GHOST_BLUE_POS.copy()
-            self.ghost_orange_pos = GHOST_ORANGE_POS.copy()
-            self.ghost_pink_pos = GHOST_PINK_POS.copy()
-            self.ghost_red_pos = GHOST_RED_POS.copy()
+            self.pac_man_pos = [self.scale * 13.1, self.scale * 22.6]
+            self.pac_man_direction = [self.scale/16, 0]
+            self.pac_man_next_direction = [self.scale/16, 0]
+            self.ghost_blue_pos = [self.scale * 12, self.scale * 13]
+            self.ghost_orange_pos = [self.scale * 12, self.scale * 14.5]
+            self.ghost_pink_pos = [self.scale * 14, self.scale * 13]
+            self.ghost_red_pos = [self.scale * 14, self.scale * 14.5]
             self.distance_ghost_blue_to_pac_man = self.distance_ghost_to_pac_man(self.ghost_blue_pos)
             self.distance_ghost_orange_to_pac_man = self.distance_ghost_to_pac_man(self.ghost_orange_pos)
             self.distance_ghost_pink_to_pac_man = self.distance_ghost_to_pac_man(self.ghost_pink_pos)
@@ -818,13 +822,13 @@ class PacMan:
         self.harmless_mode_ghost_orange = False
         self.harmless_mode_ghost_pink = False
         self.harmless_mode_ghost_red = False
-        self.pac_man_pos = PACMAN_START_POS.copy()
-        self.pac_man_direction = PACMAN_START_DIR.copy()
-        self.pac_man_next_direction = PACMAN_START_DIR.copy()
-        self.ghost_blue_pos = GHOST_BLUE_POS.copy()
-        self.ghost_orange_pos = GHOST_ORANGE_POS.copy()
-        self.ghost_pink_pos = GHOST_PINK_POS.copy()
-        self.ghost_red_pos = GHOST_RED_POS.copy()
+        self.pac_man_pos = [self.scale * 13.1, self.scale * 22.6]
+        self.pac_man_direction = [self.scale/16, 0]
+        self.pac_man_next_direction = [self.scale/16, 0]
+        self.ghost_blue_pos = [self.scale * 12, self.scale * 13]
+        self.ghost_orange_pos = [self.scale * 12, self.scale * 14.5]
+        self.ghost_pink_pos = [self.scale * 14, self.scale * 13]
+        self.ghost_red_pos = [self.scale * 14, self.scale * 14.5]
         self.ghost_blue_direction = [0, 0]
         self.ghost_orange_direction = [0, 0]
         self.ghost_pink_direction = [0, 0]

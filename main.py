@@ -13,8 +13,8 @@ def main():
     # Inicializar pygame
     pygame.init()
     
-    # Criar instância do jogo com escala 26
-    jogo = PacMan(26)
+    # Criar instância do jogo com escala 16
+    jogo = PacMan(16)
     
     # Executar o jogo
     jogo.run()
