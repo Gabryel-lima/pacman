@@ -17,6 +17,9 @@ O jogo foi convertido de C++/SDL2 para Python para ser mais acessível e fácil 
 * Power pellets que permitem comer fantasmas
 * Detecção de colisão
 * Estados de jogo (início, jogando, game over, vitória)
+* **🎮 Suporte completo a controles Xbox e genéricos**
+* **🔧 Detecção automática de controles**
+* **📱 Feedback visual de controles conectados**
 * Código Python orientado a objetos e bem estruturado
 
 ## Pré-requisitos
@@ -68,9 +71,24 @@ python main.py
 
 ## Controles do jogo
 
-* **Setas direcionais**: Movem o Pac-Man pela tela
-* **P**: Inicia o jogo / Reinicia após game over
+### Teclado
+* **WASD** ou **Setas direcionais**: Movem o Pac-Man pela tela
+* **R**: Reinicia o jogo
 * **ESC**: Sair do jogo
+
+### Controles Xbox/Genéricos
+* **D-pad** ou **Analógico esquerdo**: Movem o Pac-Man
+* **Botão Start**: Reinicia o jogo
+* **ESC** (teclado): Sair do jogo
+
+> 📖 **[Documentação completa de controles](docs/controles.md)**
+
+### Controles Suportados
+- ✅ **Xbox 360/One/Series X|S** (USB e Bluetooth)
+- ✅ **PlayStation 3/4/5**
+- ✅ **Controles genéricos USB/Bluetooth**
+- ✅ **Detecção automática**
+- ✅ **Múltiplos controles simultâneos**
 
 ## Estrutura do projeto
 
@@ -79,13 +97,39 @@ pacman/
 ├── src/
 │   ├── __init__.py     # Pacote Python
 │   ├── game.py         # Classe principal do jogo
-│   ├── entities.py     # Classes Pacman, Phantom e Scene
+│   ├── controller.py   # Sistema de controles
 │   └── constants.py    # Constantes e configurações do jogo
-├── images/             # Sprites e imagens do jogo
+├── img/                # Sprites e imagens do jogo
+├── docs/               # Documentação completa
+│   ├── README.md       # Documentação principal
+│   ├── controles.md    # Guia de controles
+│   ├── instalacao.md   # Guia de instalação
+│   └── arquitetura.md  # Documentação técnica
 ├── main.py             # Ponto de entrada do programa
 ├── requirements.txt    # Dependências Python
 └── README.md           # Este arquivo
 ```
+
+## 📚 Documentação
+
+- 📖 **[Documentação Principal](docs/README.md)** - Visão geral completa
+- 🎮 **[Guia de Controles](docs/controles.md)** - Como usar controles Xbox/genéricos
+- ⚙️ **[Guia de Instalação](docs/instalacao.md)** - Instalação detalhada
+- 🏗️ **[Arquitetura](docs/arquitetura.md)** - Documentação técnica
+
+## 🎮 Novas Funcionalidades de Controles
+
+### Sistema de Controles Avançado
+* **Detecção automática**: Reconhece controles Xbox e genéricos automaticamente
+* **Mapeamento inteligente**: Adapta-se a diferentes tipos de controle
+* **Feedback visual**: Mostra status do controle na tela
+* **Múltiplos controles**: Suporta até 4 controles simultâneos
+* **Zona morta configurável**: Evita movimento acidental nos analógicos
+
+### Controles Suportados
+- **Xbox**: 360, One, Series X|S (USB e Bluetooth)
+- **PlayStation**: PS3, PS4, PS5
+- **Genéricos**: Logitech, USB, Bluetooth compatíveis
 
 ## ✨ Correções Implementadas
 

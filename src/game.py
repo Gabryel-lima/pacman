@@ -7,6 +7,7 @@ import pygame as pg
 import random
 import os
 from .constants import *
+from .controller import ControllerManager, ControllerType
 
 
 class PacMan:
@@ -84,6 +85,11 @@ class PacMan:
         
         # Mapa do jogo
         self.map = [row[:] for row in GAME_MAP]  # Cópia do mapa
+        
+        # Sistema de controles
+        self.controller_manager = ControllerManager()
+        self.controller_connected = self.controller_manager.get_controller_count() > 0
+        self.controller_index = 0  # Usar o primeiro controle conectado
     
     def _load_pacman_sprites(self):
         """Carrega os sprites do Pacman"""
@@ -159,6 +165,17 @@ class PacMan:
         if key == 'r':
             self.restart()
         elif key == 'w' or key == 'up':
+            self._set_direction('up')
+        elif key == 'a' or key == 'left':
+            self._set_direction('left')
+        elif key == 's' or key == 'down':
+            self._set_direction('down')
+        elif key == 'd' or key == 'right':
+            self._set_direction('right')
+    
+    def _set_direction(self, direction):
+        """Define a direção do Pacman baseada no input"""
+        if direction == 'up':
             if self.pac_man_direction[0] == 0 and self.pac_man_direction[1] > 0:
                 self.pac_man_direction[0] = 0
                 self.pac_man_direction[1] = -self.scale/16
@@ -167,7 +184,7 @@ class PacMan:
             elif self.pac_man_direction[0] != 0 and self.pac_man_direction[1] == 0:
                 self.pac_man_next_direction[0] = 0
                 self.pac_man_next_direction[1] = -self.scale/16
-        elif key == 'a' or key == 'left':
+        elif direction == 'left':
             if self.pac_man_direction[0] > 0 and self.pac_man_direction[1] == 0:
                 self.pac_man_direction[0] = -self.scale/16
                 self.pac_man_direction[1] = 0
@@ -176,7 +193,7 @@ class PacMan:
             elif self.pac_man_direction[0] == 0 and self.pac_man_direction[1] != 0:
                 self.pac_man_next_direction[0] = -self.scale/16
                 self.pac_man_next_direction[1] = 0
-        elif key == 's' or key == 'down':
+        elif direction == 'down':
             if self.pac_man_direction[0] == 0 and self.pac_man_direction[1] < 0:
                 self.pac_man_direction[0] = 0
                 self.pac_man_direction[1] = self.scale/16
@@ -185,7 +202,7 @@ class PacMan:
             elif self.pac_man_direction[0] != 0 and self.pac_man_direction[1] == 0:
                 self.pac_man_next_direction[0] = 0
                 self.pac_man_next_direction[1] = self.scale/16
-        elif key == 'd' or key == 'right':
+        elif direction == 'right':
             if self.pac_man_direction[0] < 0 and self.pac_man_direction[1] == 0:
                 self.pac_man_direction[0] = self.scale/16
                 self.pac_man_direction[1] = 0
@@ -194,6 +211,29 @@ class PacMan:
             elif self.pac_man_direction[0] == 0 and self.pac_man_direction[1] != 0:
                 self.pac_man_next_direction[0] = self.scale/16
                 self.pac_man_next_direction[1] = 0
+    
+    def handle_controller_input(self):
+        """Processa entrada dos controles"""
+        if not self.controller_connected:
+            return
+        
+        # Atualizar estado dos controles
+        self.controller_manager.update()
+        
+        # Verificar se ainda há controles conectados
+        if self.controller_manager.get_controller_count() == 0:
+            self.controller_connected = False
+            return
+        
+        # Obter input de movimento do controle
+        direction, has_input = self.controller_manager.get_movement_input(self.controller_index)
+        if has_input:
+            self._set_direction(direction)
+        
+        # Obter botões especiais
+        special_buttons = self.controller_manager.get_special_buttons(self.controller_index)
+        if special_buttons.get('restart', False):
+            self.restart()
     
     def board(self):
         """Desenha o tabuleiro do jogo"""
@@ -799,6 +839,10 @@ class PacMan:
         y_lives_pos = self.scale * 33
         self.window.blit(score_text, (x_score_pos, y_score_pos))
         self.window.blit(lives_text, (x_lives_pos, y_lives_pos))
+        
+        # Mostrar status do controle
+        self._draw_controller_status()
+        
         if self.lives == -1:
             end_text = self.font.render('game', 1, self.white)
             game_text = self.font.render('over', 1, self.white)
@@ -808,6 +852,11 @@ class PacMan:
             y_game_pos = self.scale * 13.75
             self.window.blit(end_text, (x_end_pos, y_end_pos))
             self.window.blit(game_text, (x_game_pos, y_game_pos))
+    
+    def _draw_controller_status(self):
+        """Desenha o status dos controles conectados"""
+        # Método vazio - controles funcionam sem feedback visual
+        pass
     
     def restart(self):
         """Reinicia o jogo"""
@@ -869,7 +918,13 @@ class PacMan:
             self.restart_ghost_collision()
             self.collect_all_dots()
             
+            # Processar entrada dos controles
+            self.handle_controller_input()
+            
             pg.display.update()
+        
+        # Limpar recursos dos controles
+        self.controller_manager.cleanup()
         
         pg.quit()
         quit()
