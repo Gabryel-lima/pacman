@@ -35,6 +35,7 @@ class Game:
         
         # Controle de tempo para movimento
         self.last_update = 0
+        self.last_frame_time = 0
     
     def init(self) -> bool:
         """Inicializa pygame e carrega recursos"""
@@ -129,10 +130,16 @@ class Game:
     def run(self):
         """Loop principal do jogo"""
         self.running = True
+        self.last_frame_time = pygame.time.get_ticks()
         
         while self.running:
+            # Calcular delta time
+            current_time = pygame.time.get_ticks()
+            delta_time = (current_time - self.last_frame_time) / 1000.0  # Converter para segundos
+            self.last_frame_time = current_time
+            
             self._handle_events()
-            self._update()
+            self._update(delta_time)
             self._render()
             self.clock.tick(FPS)
     
@@ -164,7 +171,7 @@ class Game:
                     elif event.key == pygame.K_DOWN:
                         self.pacman.set_next_direction(DOWN)
     
-    def _update(self):
+    def _update(self, delta_time: float):
         """Atualiza a lógica do jogo"""
         current_time = pygame.time.get_ticks()
         
@@ -177,12 +184,12 @@ class Game:
                         self._restart_level()
                     else:
                         # Mover Pacman
-                        self.pacman.move(self.scene)
+                        self.pacman.move(self.scene, delta_time)
                         
                         # Mover fantasmas com IA
                         for phantom in self.phantoms:
                             if phantom and phantom.status != DEAD:
-                                phantom.move(self.scene, self.pacman.x, self.pacman.y)
+                                phantom.move(self.scene, self.pacman.x, self.pacman.y, delta_time)
                                 
                                 # Verificar colisão com Pacman
                                 distance = phantom._calculate_distance_to_pacman(self.pacman.x, self.pacman.y)
@@ -270,10 +277,6 @@ class Game:
         if self.pacman.power > 0:
             power_text = self._font.render(f"Power: {self.pacman.power}", True, (255, 255, 0))
             self.screen.blit(power_text, (10, 10))
-        
-        # Desenhar moedas restantes
-        coins_text = self._font.render(f"Coins: {self.scene.coins}", True, (255, 255, 255))
-        self.screen.blit(coins_text, (10, 40))
     
     def _draw_scene(self):
         """Desenha o cenário do jogo"""
@@ -423,6 +426,7 @@ class Game:
         
         # Resetar timer de movimento
         self.last_update = pygame.time.get_ticks()
+        self.last_frame_time = pygame.time.get_ticks()
     
     def _restart_level(self):
         """Reinicia o nível após vitória"""
@@ -446,6 +450,7 @@ class Game:
         
         # Resetar timer
         self.last_update = pygame.time.get_ticks()
+        self.last_frame_time = pygame.time.get_ticks()
     
     def quit(self):
         """Finaliza o jogo"""

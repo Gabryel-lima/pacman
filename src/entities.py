@@ -98,13 +98,14 @@ class Pacman:
         """Define a próxima direção desejada"""
         self.next_direction = direction
     
-    def move(self, scene: Scene):
+    def move(self, scene: Scene, delta_time: float = 1.0):
         """Move o Pacman com sistema de interpolação suave"""
         if self.end_game:
             return
             
-        # Sistema de animação baseado em frames
-        self.sprite_frame += self.sprite_speed
+        # Sistema de animação baseado em delta time
+        animation_speed = PACMAN_ANIMATION_SPEED * delta_time
+        self.sprite_frame += animation_speed
         if self.sprite_frame >= 60:
             self.sprite_frame = 0
         
@@ -188,7 +189,7 @@ class Phantom:
         self.distance_to_pacman = 0
         self.harmless_mode = False
     
-    def move(self, scene: Scene, pacman_x: int, pacman_y: int):
+    def move(self, scene: Scene, pacman_x: int, pacman_y: int, delta_time: float = 1.0):
         """Move o fantasma com IA baseada em distância"""
         # Fantasmas mortos ressuscitam após um tempo
         if self.status == DEAD:
@@ -201,8 +202,9 @@ class Phantom:
         # Calcular distância até o Pacman
         self.distance_to_pacman = self._calculate_distance_to_pacman(pacman_x, pacman_y)
         
-        # Sistema de animação
-        self.sprite_frame += 1
+        # Sistema de animação baseado em delta time
+        animation_speed = PHANTOM_ANIMATION_SPEED * delta_time
+        self.sprite_frame += animation_speed
         if self.sprite_frame >= 60:
             self.sprite_frame = 0
         

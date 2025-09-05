@@ -10,6 +10,10 @@ CELL_SIZE = WINDOW_SIZE // MAP_SIZE
 FPS = 60
 MOVEMENT_DELAY = 200  # ms entre movimentos
 
+# Velocidades de animação (frames por segundo)
+PACMAN_ANIMATION_SPEED = 2.0  # 2 ciclos de animação por segundo
+PHANTOM_ANIMATION_SPEED = 1.0  # 1 ciclo de animação por segundo
+
 # Estados do jogo
 STARTING = 0
 PLAYING = 1
