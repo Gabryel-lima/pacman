@@ -1,458 +1,871 @@
 """
 Classe principal do jogo Pac-Man
-Conversão de C++/SDL2 para Python/pygame-ce
+Baseada na lógica do arquivo Pac_Man.py
 """
 
-import pygame
+import pygame as pg
+import random
 import os
-import sys
-from typing import List, Optional, Tuple
-from .entities import Scene, Pacman, Phantom
 from .constants import *
 
-class Game:
-    """Classe principal que gerencia o jogo Pac-Man"""
+
+class PacMan:
+    """Classe principal do jogo Pac-Man baseada no arquivo de referência"""
     
-    def __init__(self):
-        """Inicializa o jogo"""
-        self.screen: Optional[pygame.Surface] = None
-        self.clock: Optional[pygame.time.Clock] = None
-        self.running = False
-        self.game_mode = STARTING
+    def __init__(self, scale):
+        """Inicializa o jogo com o fator de escala especificado"""
+        self.white = WHITE
+        self.black = BLACK
+        self.blue = BLUE
         
-        # Sprites/texturas
-        self.pacman_sprites: List[pygame.Surface] = []
-        self.phantom_sprites: List[pygame.Surface] = []
-        self.scene_sprites: List[pygame.Surface] = []
-        self.game_start_sprite: Optional[pygame.Surface] = None
-        self.game_over_sprite: Optional[pygame.Surface] = None
-        self.game_won_sprite: Optional[pygame.Surface] = None
+        # Configurar janela
+        self.window = pg.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+        pg.display.set_caption("Pac-Man")
         
-        # Objetos do jogo
-        self.scene: Optional[Scene] = None
-        self.pacman: Optional[Pacman] = None
-        self.phantoms: List[Optional[Phantom]] = [None, None, None, None]
+        # Configurar fonte
+        pg.font.init()
+        self.font = pg.font.SysFont("Courier New", scale * 2, bold=True)
         
-        # Controle de tempo para movimento
-        self.last_update = 0
-        self.last_frame_time = 0
+        # Configurar clock
+        self.clock = pg.time.Clock()
+        
+        # Variáveis do jogo
+        self.scale = scale
+        self.sprite_frame = 0
+        self.sprite_speed = SPRITE_SPEED
+        
+        # Estado do jogo
+        self.score = 0
+        self.lives = 5
+        self.end_game = False
+        self.harmless_mode = False
+        self.harmless_mode_timer = 0
+        self.harmless_mode_ghost_blue = False
+        self.harmless_mode_ghost_orange = False
+        self.harmless_mode_ghost_pink = False
+        self.harmless_mode_ghost_red = False
+        
+        # Posições e direções do Pacman
+        self.pac_man_pos = PACMAN_START_POS.copy()
+        self.pac_man_direction = PACMAN_START_DIR.copy()
+        self.pac_man_next_direction = PACMAN_START_DIR.copy()
+        
+        # Posições e direções dos fantasmas
+        self.ghost_blue_pos = GHOST_BLUE_POS.copy()
+        self.ghost_orange_pos = GHOST_ORANGE_POS.copy()
+        self.ghost_pink_pos = GHOST_PINK_POS.copy()
+        self.ghost_red_pos = GHOST_RED_POS.copy()
+        
+        self.ghost_blue_direction = [0, 0]
+        self.ghost_orange_direction = [0, 0]
+        self.ghost_pink_direction = [0, 0]
+        self.ghost_red_direction = [0, 0]
+        
+        self.ghost_blue_next_direction = [0, 0]
+        self.ghost_orange_next_direction = [0, 0]
+        self.ghost_pink_next_direction = [0, 0]
+        self.ghost_red_next_direction = [0, 0]
+        
+        # Distâncias dos fantasmas ao Pacman
+        self.distance_ghost_blue_to_pac_man = self.distance_ghost_to_pac_man(self.ghost_blue_pos)
+        self.distance_ghost_orange_to_pac_man = self.distance_ghost_to_pac_man(self.ghost_orange_pos)
+        self.distance_ghost_pink_to_pac_man = self.distance_ghost_to_pac_man(self.ghost_pink_pos)
+        self.distance_ghost_red_to_pac_man = self.distance_ghost_to_pac_man(self.ghost_red_pos)
+        
+        # Carregar sprites do Pacman
+        self._load_pacman_sprites()
+        
+        # Carregar sprites dos fantasmas
+        self._load_ghost_sprites()
+        
+        # Mapa do jogo
+        self.map = [row[:] for row in GAME_MAP]  # Cópia do mapa
     
-    def init(self) -> bool:
-        """Inicializa pygame e carrega recursos"""
-        try:
-            pygame.init()
-            
-            # Criar janela
-            self.screen = pygame.display.set_mode((WINDOW_SIZE, WINDOW_SIZE))
-            pygame.display.set_caption("PACMAN - pygame-ce")
-            
-            # Criar clock para controle de FPS
-            self.clock = pygame.time.Clock()
-            
-            # Carregar sprites
-            if not self._load_sprites():
-                return False
-            
-            return True
-            
-        except Exception as e:
-            print(f"Erro ao inicializar pygame: {e}")
-            return False
+    def _load_pacman_sprites(self):
+        """Carrega os sprites do Pacman"""
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        img_dir = os.path.join(base_dir, "img")
+        
+        # Lista de sprites do Pacman (17 frames)
+        pacman_sprites = []
+        for i in range(1, 18):
+            sprite_path = os.path.join(img_dir, f"Pac_Man_{i}.png")
+            if os.path.exists(sprite_path):
+                sprite = pg.image.load(sprite_path)
+                scaled_sprite = pg.transform.scale(sprite, (self.scale * 1.3, self.scale * 1.3))
+                pacman_sprites.append(scaled_sprite)
+            else:
+                # Criar sprite placeholder se não existir
+                placeholder = pg.Surface((self.scale * 1.3, self.scale * 1.3))
+                placeholder.fill((255, 255, 0))  # Amarelo
+                pacman_sprites.append(placeholder)
+        
+        # Atribuir sprites às variáveis
+        for i, sprite in enumerate(pacman_sprites):
+            setattr(self, f"pac_man_{i+1}", sprite)
     
-    def _load_sprites(self) -> bool:
-        """Carrega todos os sprites do jogo"""
-        try:
-            # Obter diretório base do projeto
-            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            
-            # Carregar sprites do Pacman (12 sprites - 4 direções x 3 animações)
-            for i in range(1, 13):
-                sprite_path = os.path.join(base_dir, "images", f"pacman-{i}.png")
+    def _load_ghost_sprites(self):
+        """Carrega os sprites dos fantasmas"""
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        img_dir = os.path.join(base_dir, "img")
+        
+        # Cores dos fantasmas
+        ghost_colors = ['Blue', 'Orange', 'Pink', 'Red']
+        
+        for color in ghost_colors:
+            # Carregar sprites de movimento normal
+            for frame in range(2):
+                sprite_path = os.path.join(img_dir, f"{color}_Ghost_Down_Right_{frame}.png")
                 if os.path.exists(sprite_path):
-                    sprite = pygame.image.load(sprite_path).convert_alpha()
-                    sprite = pygame.transform.scale(sprite, (CELL_SIZE, CELL_SIZE))
-                    self.pacman_sprites.append(sprite)
+                    sprite = pg.image.load(sprite_path)
+                    scaled_sprite = pg.transform.scale(sprite, (self.scale * 1.3, self.scale * 1.3))
+                    setattr(self, f"ghost_{color.lower()}_down_right_{frame}", scaled_sprite)
                 else:
-                    print(f"Sprite não encontrado: {sprite_path}")
-                    return False
-            
-            # Carregar sprites dos fantasmas (24 sprites)
-            for i in range(1, 25):
-                sprite_path = os.path.join(base_dir, "images", f"phantom-{i}.png")
-                if os.path.exists(sprite_path):
-                    sprite = pygame.image.load(sprite_path).convert_alpha()
-                    sprite = pygame.transform.scale(sprite, (CELL_SIZE, CELL_SIZE))
-                    self.phantom_sprites.append(sprite)
-                else:
-                    print(f"Sprite não encontrado: {sprite_path}")
-                    return False
-            
-            # Carregar sprites do cenário
-            scene_files = [
-                "empty.png", "coin.png", "power.png", "vertical.png", "horizontal.png",
-                "curve-base-left.png", "curve-base-right.png", "curve-top-left.png", 
-                "curve-top-right.png", "end-left.png", "end-right.png", "end-base.png", "end-top.png"
-            ]
-            
-            for filename in scene_files:
-                sprite_path = os.path.join(base_dir, "images", filename)
-                if os.path.exists(sprite_path):
-                    sprite = pygame.image.load(sprite_path).convert_alpha()
-                    sprite = pygame.transform.scale(sprite, (CELL_SIZE, CELL_SIZE))
-                    self.scene_sprites.append(sprite)
-                else:
-                    print(f"Sprite não encontrado: {sprite_path}")
-                    return False
-            
-            # Carregar sprites de interface
-            interface_files = [
-                ("game-start.png", "game_start_sprite"),
-                ("game-over.png", "game_over_sprite"),
-                ("you-won.png", "game_won_sprite")
-            ]
-            
-            for filename, attr_name in interface_files:
-                filepath = os.path.join(base_dir, "images", filename)
-                if os.path.exists(filepath):
-                    sprite = pygame.image.load(filepath).convert_alpha()
-                    sprite = pygame.transform.scale(sprite, (WINDOW_SIZE, WINDOW_SIZE))
-                    setattr(self, attr_name, sprite)
-                else:
-                    print(f"Sprite não encontrado: {filepath}")
-                    return False
-            
-            return True
-            
-        except Exception as e:
-            print(f"Erro ao carregar sprites: {e}")
-            return False
+                    # Criar placeholder
+                    placeholder = pg.Surface((self.scale * 1.3, self.scale * 1.3))
+                    if color == 'Blue':
+                        placeholder.fill((0, 100, 255))
+                    elif color == 'Orange':
+                        placeholder.fill((255, 165, 0))
+                    elif color == 'Pink':
+                        placeholder.fill((255, 192, 203))
+                    else:  # Red
+                        placeholder.fill((255, 0, 0))
+                    setattr(self, f"ghost_{color.lower()}_down_right_{frame}", placeholder)
+        
+        # Carregar sprites de fantasma inofensivo
+        for frame in range(2):
+            sprite_path = os.path.join(img_dir, f"Harmless_Ghost_{frame}.png")
+            if os.path.exists(sprite_path):
+                sprite = pg.image.load(sprite_path)
+                scaled_sprite = pg.transform.scale(sprite, (self.scale * 1.3, self.scale * 1.3))
+                setattr(self, f"ghost_harmless_{frame}", scaled_sprite)
+            else:
+                # Criar placeholder azul
+                placeholder = pg.Surface((self.scale * 1.3, self.scale * 1.3))
+                placeholder.fill((100, 100, 255))
+                setattr(self, f"ghost_harmless_{frame}", placeholder)
+    
+    def clear_window(self):
+        """Limpa a janela com a cor de fundo"""
+        pg.draw.rect(self.window, self.black, (0, 0, self.window.get_width(), self.window.get_height()))
+    
+    def move(self, key):
+        """Processa entrada do teclado para movimento do Pacman"""
+        if key == 'r':
+            self.restart()
+        elif key == 'w' or key == 'up':
+            if self.pac_man_direction[0] == 0 and self.pac_man_direction[1] > 0:
+                self.pac_man_direction[0] = 0
+                self.pac_man_direction[1] = -self.scale/16
+                self.pac_man_next_direction[0] = 0
+                self.pac_man_next_direction[1] = -self.scale/16
+            elif self.pac_man_direction[0] != 0 and self.pac_man_direction[1] == 0:
+                self.pac_man_next_direction[0] = 0
+                self.pac_man_next_direction[1] = -self.scale/16
+        elif key == 'a' or key == 'left':
+            if self.pac_man_direction[0] > 0 and self.pac_man_direction[1] == 0:
+                self.pac_man_direction[0] = -self.scale/16
+                self.pac_man_direction[1] = 0
+                self.pac_man_next_direction[0] = -self.scale/16
+                self.pac_man_next_direction[1] = 0
+            elif self.pac_man_direction[0] == 0 and self.pac_man_direction[1] != 0:
+                self.pac_man_next_direction[0] = -self.scale/16
+                self.pac_man_next_direction[1] = 0
+        elif key == 's' or key == 'down':
+            if self.pac_man_direction[0] == 0 and self.pac_man_direction[1] < 0:
+                self.pac_man_direction[0] = 0
+                self.pac_man_direction[1] = self.scale/16
+                self.pac_man_next_direction[0] = 0
+                self.pac_man_next_direction[1] = self.scale/16
+            elif self.pac_man_direction[0] != 0 and self.pac_man_direction[1] == 0:
+                self.pac_man_next_direction[0] = 0
+                self.pac_man_next_direction[1] = self.scale/16
+        elif key == 'd' or key == 'right':
+            if self.pac_man_direction[0] < 0 and self.pac_man_direction[1] == 0:
+                self.pac_man_direction[0] = self.scale/16
+                self.pac_man_direction[1] = 0
+                self.pac_man_next_direction[0] = self.scale/16
+                self.pac_man_next_direction[1] = 0
+            elif self.pac_man_direction[0] == 0 and self.pac_man_direction[1] != 0:
+                self.pac_man_next_direction[0] = self.scale/16
+                self.pac_man_next_direction[1] = 0
+    
+    def board(self):
+        """Desenha o tabuleiro do jogo"""
+        for y in range(len(self.map)):
+            for x in range(len(self.map[0])):
+                if self.map[y][x] == WALL:
+                    pg.draw.rect(self.window, self.blue, (x * self.scale, y * self.scale, self.scale, self.scale))
+                if self.map[y][x] == TUNNEL:
+                    pg.draw.rect(self.window, self.white, (x * self.scale, y * self.scale, self.scale, self.scale))
+                if self.map[y][x] == EMPTY or self.map[y][x] == DOT or self.map[y][x] == POWER_PELLET:
+                    pg.draw.rect(self.window, self.black, ((x * self.scale) - (self.scale / 2), (y * self.scale) - (self.scale / 2), self.scale * 1.5, self.scale * 1.5))
+        
+        # Desenhar pontos e power pellets
+        for y in range(len(self.map)):
+            for x in range(len(self.map[0])):
+                if self.map[y][x] == DOT:
+                    pg.draw.circle(self.window, self.white, ((x * self.scale) + (self.scale / 4), (y * self.scale) + (self.scale / 4)), self.scale / 5)
+                if self.map[y][x] == POWER_PELLET:
+                    pg.draw.circle(self.window, self.white, ((x * self.scale) + (self.scale / 4), (y * self.scale) + (self.scale / 4)), self.scale / 2)
+    
+    def animation_step(self):
+        """Atualiza o frame de animação"""
+        if self.sprite_frame == 60:
+            self.sprite_frame = 0
+        else:
+            self.sprite_frame += self.sprite_speed
+    
+    def player_rotation(self, image):
+        """Rotaciona a imagem do Pacman baseada na direção"""
+        x_dir = self.pac_man_direction[0]
+        y_dir = self.pac_man_direction[1]
+        if x_dir > 0 and y_dir == 0:
+            return image
+        elif x_dir == 0 and y_dir > 0:
+            return pg.transform.rotate(image, -90)
+        elif x_dir < 0 and y_dir == 0:
+            return pg.transform.flip(image, True, False)
+        elif x_dir == 0 and y_dir < 0:
+            return pg.transform.rotate(image, 90)
+        return image
+    
+    def collider(self, position, direction):
+        """Verifica colisões com paredes"""
+        if self.end_game == False:
+            position[0] += direction[0]
+            position[1] += direction[1]
+            for y in range(len(self.map)):
+                for x in range(len(self.map[0])):
+                    if self.map[y][x] == WALL or self.map[y][x] == TUNNEL:
+                        x_wall = (x * self.scale) - (self.scale * 0.65)
+                        y_wall = (y * self.scale) - (self.scale * 0.65)
+                        wall_size = self.scale * 1.85
+                        x_agent = position[0] + (self.scale * 0.65)
+                        y_agent = position[1] + (self.scale * 0.65)
+                        
+                        if x_agent >= x_wall and x_agent <= x_wall + wall_size and y_agent >= y_wall and y_agent <= y_wall + wall_size:
+                            position[0] -= direction[0]
+                            position[1] -= direction[1]
+        return position
+    
+    def turning_corner(self, position, direction, next_direction):
+        """Sistema de curvas para mudança de direção"""
+        turned_corner = True
+        position[0] += next_direction[0] * 16
+        position[1] += next_direction[1] * 16
+        for y in range(len(self.map)):
+            for x in range(len(self.map[0])):
+                if self.map[y][x] == WALL or self.map[y][x] == TUNNEL:
+                    x_wall = (x * self.scale) - (self.scale * 0.65)
+                    y_wall = (y * self.scale) - (self.scale * 0.65)
+                    wall_size = self.scale * 1.85
+                    x_agent = position[0] + (self.scale * 0.65)
+                    y_agent = position[1] + (self.scale * 0.65)
+                    if x_agent >= x_wall and x_agent <= x_wall + wall_size and y_agent >= y_wall and y_agent <= y_wall + wall_size:
+                        turned_corner = False
+        position[0] -= next_direction[0] * 16
+        position[1] -= next_direction[1] * 16
+        if turned_corner:
+            direction[0] = next_direction[0]
+            direction[1] = next_direction[1]
+        return direction, next_direction
+    
+    def collect_dots(self):
+        """Coleta pontos e power pellets"""
+        x_pac_man = self.pac_man_pos[0] + (self.scale * 0.65)
+        y_pac_man = self.pac_man_pos[1] + (self.scale * 0.65)
+        for y in range(len(self.map)):
+            for x in range(len(self.map[0])):
+                if self.map[y][x] == DOT:
+                    x_dot = (x * self.scale) + (self.scale / 4)
+                    y_dot = (y * self.scale) + (self.scale / 4)
+                    radius = self.scale / 5
+                    if x_pac_man >= x_dot - radius and x_pac_man <= x_dot + radius and y_pac_man >= y_dot - radius and y_pac_man <= y_dot + radius:
+                        self.map[y][x] = EMPTY
+                        self.score += DOT_POINTS
+                if self.map[y][x] == POWER_PELLET:
+                    x_dot = (x * self.scale) + (self.scale / 4)
+                    y_dot = (y * self.scale) + (self.scale / 4)
+                    radius = self.scale / 2
+                    if x_pac_man >= x_dot - radius and x_pac_man <= x_dot + radius and y_pac_man >= y_dot - radius and y_pac_man <= y_dot + radius:
+                        self.map[y][x] = EMPTY
+                        self.score += POWER_PELLET_POINTS
+                        self.harmless_mode = True
+                        self.harmless_mode_ghost_blue = True
+                        self.harmless_mode_ghost_orange = True
+                        self.harmless_mode_ghost_pink = True
+                        self.harmless_mode_ghost_red = True
+    
+    def pacman_tunnel(self, position):
+        """Implementa túneis laterais"""
+        x_pos = position[0]
+        y_pos = position[1]
+        if position[0] >= self.scale * 27.5:
+            x_pos = 0 - (self.scale * 1.3)
+        elif position[0] <= -(self.scale * 1.3):
+            x_pos = self.scale * 27.5
+        return [x_pos, y_pos]
+    
+    def player(self):
+        """Desenha e atualiza o Pacman"""
+        self.pac_man_direction, self.pac_man_next_direction = self.turning_corner(self.pac_man_pos, self.pac_man_direction, self.pac_man_next_direction)
+        self.pac_man_pos = self.collider(self.pac_man_pos, self.pac_man_direction)
+        self.pac_man_pos = self.pacman_tunnel(self.pac_man_pos)
+        x = self.pac_man_pos[0]
+        y = self.pac_man_pos[1]
+        
+        if self.end_game:
+            # Animação de morte
+            if self.sprite_frame <= 5:
+                self.window.blit(self.player_rotation(self.pac_man_6), (x, y))
+            elif self.sprite_frame <= 10:
+                self.window.blit(self.player_rotation(self.pac_man_7), (x, y))
+            elif self.sprite_frame <= 15:
+                self.window.blit(self.player_rotation(self.pac_man_8), (x, y))
+            elif self.sprite_frame <= 20:
+                self.window.blit(self.player_rotation(self.pac_man_9), (x, y))
+            elif self.sprite_frame <= 25:
+                self.window.blit(self.player_rotation(self.pac_man_10), (x, y))
+            elif self.sprite_frame <= 30:
+                self.window.blit(self.player_rotation(self.pac_man_11), (x, y))
+            elif self.sprite_frame <= 35:
+                self.window.blit(self.player_rotation(self.pac_man_12), (x, y))
+            elif self.sprite_frame <= 40:
+                self.window.blit(self.player_rotation(self.pac_man_13), (x, y))
+            elif self.sprite_frame <= 45:
+                self.window.blit(self.player_rotation(self.pac_man_14), (x, y))
+            elif self.sprite_frame <= 50:
+                self.window.blit(self.player_rotation(self.pac_man_15), (x, y))
+            elif self.sprite_frame <= 55:
+                self.window.blit(self.player_rotation(self.pac_man_16), (x, y))
+            elif self.sprite_frame <= 60:
+                self.window.blit(self.player_rotation(self.pac_man_17), (x, y))
+        else:
+            # Animação normal
+            if self.sprite_frame <= 6:
+                self.window.blit(self.player_rotation(self.pac_man_1), (x, y))
+            elif self.sprite_frame <= 12:
+                self.window.blit(self.player_rotation(self.pac_man_1), (x, y))
+            elif self.sprite_frame <= 18:
+                self.window.blit(self.player_rotation(self.pac_man_2), (x, y))
+            elif self.sprite_frame <= 24:
+                self.window.blit(self.player_rotation(self.pac_man_3), (x, y))
+            elif self.sprite_frame <= 30:
+                self.window.blit(self.player_rotation(self.pac_man_4), (x, y))
+            elif self.sprite_frame <= 36:
+                self.window.blit(self.player_rotation(self.pac_man_5), (x, y))
+            elif self.sprite_frame <= 42:
+                self.window.blit(self.player_rotation(self.pac_man_4), (x, y))
+            elif self.sprite_frame <= 48:
+                self.window.blit(self.player_rotation(self.pac_man_3), (x, y))
+            elif self.sprite_frame <= 54:
+                self.window.blit(self.player_rotation(self.pac_man_2), (x, y))
+            elif self.sprite_frame <= 60:
+                self.window.blit(self.player_rotation(self.pac_man_1), (x, y))
+    
+    def distance_ghost_to_pac_man(self, ghost_pos):
+        """Calcula distância entre fantasma e Pacman"""
+        ghost_x = ghost_pos[0] + (self.scale * 0.65)
+        ghost_y = ghost_pos[1] + (self.scale * 0.65)
+        pac_man_x = self.pac_man_pos[0] + (self.scale * 0.65)
+        pac_man_y = self.pac_man_pos[1] + (self.scale * 0.65)
+        delta_x = (ghost_x - pac_man_x) ** 2
+        delta_y = (ghost_y - pac_man_y) ** 2
+        distance = (delta_x + delta_y) ** (1 / 2)
+        return distance
+    
+    def ghost_render(self, color, position):
+        """Desenha um fantasma baseado na cor e posição"""
+        x = position[0]
+        y = position[1]
+        if color == 'blue':
+            if self.sprite_frame <= 15:
+                self.window.blit(self.ghost_blue_down_right_0, (x, y))
+            elif self.sprite_frame <= 30:
+                self.window.blit(self.ghost_blue_down_right_1, (x, y))
+            elif self.sprite_frame <= 45:
+                self.window.blit(self.ghost_blue_down_right_0, (x, y))
+            elif self.sprite_frame <= 60:
+                self.window.blit(self.ghost_blue_down_right_1, (x, y))
+        elif color == 'orange':
+            if self.sprite_frame <= 15:
+                self.window.blit(self.ghost_orange_down_right_0, (x, y))
+            elif self.sprite_frame <= 30:
+                self.window.blit(self.ghost_orange_down_right_1, (x, y))
+            elif self.sprite_frame <= 45:
+                self.window.blit(self.ghost_orange_down_right_0, (x, y))
+            elif self.sprite_frame <= 60:
+                self.window.blit(self.ghost_orange_down_right_1, (x, y))
+        elif color == 'pink':
+            if self.sprite_frame <= 15:
+                self.window.blit(self.ghost_pink_down_right_0, (x, y))
+            elif self.sprite_frame <= 30:
+                self.window.blit(self.ghost_pink_down_right_1, (x, y))
+            elif self.sprite_frame <= 45:
+                self.window.blit(self.ghost_pink_down_right_0, (x, y))
+            elif self.sprite_frame <= 60:
+                self.window.blit(self.ghost_pink_down_right_1, (x, y))
+        elif color == 'red':
+            if self.sprite_frame <= 15:
+                self.window.blit(self.ghost_red_down_right_0, (x, y))
+            elif self.sprite_frame <= 30:
+                self.window.blit(self.ghost_red_down_right_1, (x, y))
+            elif self.sprite_frame <= 45:
+                self.window.blit(self.ghost_red_down_right_0, (x, y))
+            elif self.sprite_frame <= 60:
+                self.window.blit(self.ghost_red_down_right_1, (x, y))
+        elif color == 'harmless':
+            if self.sprite_frame <= 15:
+                self.window.blit(self.ghost_harmless_0, (x, y))
+            elif self.sprite_frame <= 30:
+                self.window.blit(self.ghost_harmless_1, (x, y))
+            elif self.sprite_frame <= 45:
+                self.window.blit(self.ghost_harmless_0, (x, y))
+            elif self.sprite_frame <= 60:
+                self.window.blit(self.ghost_harmless_1, (x, y))
+    
+    def random_direction_for_ghost(self):
+        """Gera direção aleatória para fantasma"""
+        move_up_or_sideways = random.randint(0, 1)
+        x_direction = random.randint(0, 1)
+        y_direction = random.randint(0, 1)
+        direction = []
+        if move_up_or_sideways == 0:
+            if x_direction == 0:
+                direction = [-self.scale/16, 0]
+            else:
+                direction = [self.scale/16, 0]
+        else:
+            if y_direction == 0:
+                direction = [0, -self.scale/16]
+            else:
+                direction = [0, self.scale/16]
+        return direction
+    
+    def random_next_direction_for_ghost(self, direction):
+        """Gera próxima direção aleatória para fantasma"""
+        new_direction = [0, 0]
+        if direction[0] != 0:
+            if random.randint(0, 1) == 0:
+                new_direction[1] = -self.scale/16
+            else:
+                new_direction[1] = self.scale/16
+        elif direction[1] != 0:
+            if random.randint(0, 1) == 0:
+                new_direction[0] = -self.scale/16
+            else:
+                new_direction[0] = self.scale/16
+        return new_direction
+    
+    def direction_ghost_to_pac_man(self, position, direction):
+        """Calcula direção para fantasma perseguir Pacman"""
+        new_direction = [0, 0]
+        ghost_x = position[0]
+        ghost_y = position[1]
+        pac_man_x = self.pac_man_pos[0]
+        pac_man_y = self.pac_man_pos[1]
+        delta_x = ghost_x - pac_man_x
+        delta_y = ghost_y - pac_man_y
+        if direction[1] != 0:
+            if delta_x <= 0:
+                new_direction[0] = self.scale/16
+            else:
+                new_direction[0] = -self.scale/16
+        if direction[0] != 0:
+            if delta_y <= 0:
+                new_direction[1] = self.scale/16
+            else:
+                new_direction[1] = -self.scale/16
+        return new_direction
+    
+    def direction_harmless_ghost_to_pac_man(self, position, direction):
+        """Calcula direção para fantasma fugir do Pacman"""
+        new_direction = [0, 0]
+        ghost_x = position[0]
+        ghost_y = position[1]
+        pac_man_x = self.pac_man_pos[0]
+        pac_man_y = self.pac_man_pos[1]
+        delta_x = ghost_x - pac_man_x
+        delta_y = ghost_y - pac_man_y
+        if direction[1] != 0:
+            if delta_x <= 0:
+                new_direction[0] = -self.scale/16
+            else:
+                new_direction[0] = self.scale/16
+        if direction[0] != 0:
+            if delta_y <= 0:
+                new_direction[1] = -self.scale/16
+            else:
+                new_direction[1] = self.scale/16
+        return new_direction
+    
+    def new_random_direction_for_ghost(self, position, direction):
+        """Gera nova direção aleatória para fantasma quando está preso"""
+        new_direction = [0, 0]
+        pos = [0, 0]
+        pos[0] = position[0]
+        pos[1] = position[1]
+        
+        if direction[0] != 0:
+            if random.randint(0, 1) == 0:
+                new_direction[1] = -self.scale/8
+            else:
+                new_direction[1] = self.scale/8
+        elif direction[1] != 0:
+            if random.randint(0, 1) == 0:
+                new_direction[0] = -self.scale/8
+            else:
+                new_direction[0] = self.scale/8
+        
+        new_position = self.collider(pos, new_direction)
+        
+        if position == new_position:
+            new_direction[0] *= -1
+            new_direction[1] *= -1
+            new_position = self.collider(pos, new_direction)
+        
+        new_direction[0] /= 2
+        new_direction[1] /= 2
+        
+        return new_position, new_direction
+    
+    def ghost_intelligence(self, ghost_pos, ghost_direction, ghost_next_direction, distance_ghost_to_pac_man, harmless_ghost_mode):
+        """IA do fantasma - decide movimento baseado na distância e modo"""
+        ghost_blue_pos = [0, 0]
+        ghost_blue_pos[0] = ghost_pos[0]
+        ghost_blue_pos[1] = ghost_pos[1]
+        distance_ghost_to_pac_man = self.distance_ghost_to_pac_man(ghost_pos)
+        if distance_ghost_to_pac_man <= self.scale * 10:
+            if harmless_ghost_mode:
+                ghost_next_direction = self.direction_harmless_ghost_to_pac_man(ghost_pos, ghost_direction)
+            else:
+                ghost_next_direction = self.direction_ghost_to_pac_man(ghost_pos, ghost_direction)
+            ghost_direction, ghost_next_direction = self.turning_corner(ghost_pos, ghost_direction, ghost_next_direction)
+        if ghost_direction == ghost_next_direction:
+            if harmless_ghost_mode:
+                ghost_next_direction = self.direction_harmless_ghost_to_pac_man(ghost_pos, ghost_direction)
+            else:
+                ghost_next_direction = self.direction_ghost_to_pac_man(ghost_pos, ghost_direction)
+            ghost_pos = self.collider(ghost_pos, ghost_direction)
+        ghost_pos = self.pacman_tunnel(ghost_pos)
+        ghost_pos = self.collider(ghost_pos, ghost_direction)
+        if ghost_blue_pos == ghost_pos:
+            ghost_pos, ghost_direction = self.new_random_direction_for_ghost(ghost_pos, ghost_direction)
+        return ghost_pos, ghost_direction, ghost_next_direction, distance_ghost_to_pac_man
+    
+    def ghost(self):
+        """Atualiza e move todos os fantasmas"""
+        # Fantasma azul
+        if self.ghost_blue_pos != GHOST_BLUE_POS:
+            input_1 = self.ghost_blue_pos
+            input_2 = self.ghost_blue_direction
+            input_3 = self.ghost_blue_next_direction
+            input_4 = self.distance_ghost_blue_to_pac_man
+            input_5 = self.harmless_mode_ghost_blue
+            output_1, output_2, output_3, output_4 = self.ghost_intelligence(input_1, input_2, input_3, input_4, input_5)
+            self.ghost_blue_pos = output_1
+            self.ghost_blue_direction = output_2
+            self.ghost_blue_next_direction = output_3
+            self.distance_ghost_blue_to_pac_man = output_4
+        
+        # Fantasma laranja
+        if self.ghost_orange_pos != GHOST_ORANGE_POS:
+            input_1 = self.ghost_orange_pos
+            input_2 = self.ghost_orange_direction
+            input_3 = self.ghost_orange_next_direction
+            input_4 = self.distance_ghost_orange_to_pac_man
+            input_5 = self.harmless_mode_ghost_orange
+            output_1, output_2, output_3, output_4 = self.ghost_intelligence(input_1, input_2, input_3, input_4, input_5)
+            self.ghost_orange_pos = output_1
+            self.ghost_orange_direction = output_2
+            self.ghost_orange_next_direction = output_3
+            self.distance_ghost_orange_to_pac_man = output_4
+        
+        # Fantasma rosa
+        if self.ghost_pink_pos != GHOST_PINK_POS:
+            input_1 = self.ghost_pink_pos
+            input_2 = self.ghost_pink_direction
+            input_3 = self.ghost_pink_next_direction
+            input_4 = self.distance_ghost_pink_to_pac_man
+            input_5 = self.harmless_mode_ghost_pink
+            output_1, output_2, output_3, output_4 = self.ghost_intelligence(input_1, input_2, input_3, input_4, input_5)
+            self.ghost_pink_pos = output_1
+            self.ghost_pink_direction = output_2
+            self.ghost_pink_next_direction = output_3
+            self.distance_ghost_pink_to_pac_man = output_4
+        
+        # Fantasma vermelho
+        if self.ghost_red_pos != GHOST_RED_POS:
+            input_1 = self.ghost_red_pos
+            input_2 = self.ghost_red_direction
+            input_3 = self.ghost_red_next_direction
+            input_4 = self.distance_ghost_red_to_pac_man
+            input_5 = self.harmless_mode_ghost_red
+            output_1, output_2, output_3, output_4 = self.ghost_intelligence(input_1, input_2, input_3, input_4, input_5)
+            self.ghost_red_pos = output_1
+            self.ghost_red_direction = output_2
+            self.ghost_red_next_direction = output_3
+            self.distance_ghost_red_to_pac_man = output_4
+    
+    def moving_ghost_into_the_game(self, color):
+        """Move fantasma para o jogo quando sai da posição inicial"""
+        if color == 'blue':
+            self.ghost_blue_pos = [self.scale * 13.1, self.scale * 10.6]
+            self.ghost_blue_direction = self.random_direction_for_ghost()
+            self.ghost_blue_next_direction = self.random_next_direction_for_ghost(self.ghost_blue_direction)
+        elif color == 'orange':
+            self.ghost_orange_pos = [self.scale * 13.1, self.scale * 10.6]
+            self.ghost_orange_direction = self.random_direction_for_ghost()
+            self.ghost_orange_next_direction = self.random_next_direction_for_ghost(self.ghost_orange_direction)
+        elif color == 'pink':
+            self.ghost_pink_pos = [self.scale * 13.1, self.scale * 10.6]
+            self.ghost_pink_direction = self.random_direction_for_ghost()
+            self.ghost_pink_next_direction = self.random_next_direction_for_ghost(self.ghost_pink_direction)
+        elif color == 'red':
+            self.ghost_red_pos = [self.scale * 13.1, self.scale * 10.6]
+            self.ghost_red_direction = self.random_direction_for_ghost()
+            self.ghost_red_next_direction = self.random_next_direction_for_ghost(self.ghost_red_direction)
+    
+    def ghost_manager(self):
+        """Gerencia o estado dos fantasmas e modo inofensivo"""
+        if self.harmless_mode:
+            if self.sprite_frame == 60:
+                self.harmless_mode_timer += 1
+            if self.harmless_mode_timer == HARMLESS_MODE_DURATION:
+                self.harmless_mode = False
+                self.harmless_mode_ghost_blue = False
+                self.harmless_mode_ghost_orange = False
+                self.harmless_mode_ghost_pink = False
+                self.harmless_mode_ghost_red = False
+                self.harmless_mode_timer = 0
+        
+        # Renderizar fantasmas
+        if self.harmless_mode_ghost_blue:
+            self.ghost_render('harmless', self.ghost_blue_pos)
+        else:
+            self.ghost_render('blue', self.ghost_blue_pos)
+        
+        if self.harmless_mode_ghost_orange:
+            self.ghost_render('harmless', self.ghost_orange_pos)
+        else:
+            self.ghost_render('orange', self.ghost_orange_pos)
+        
+        if self.harmless_mode_ghost_pink:
+            self.ghost_render('harmless', self.ghost_pink_pos)
+        else:
+            self.ghost_render('pink', self.ghost_pink_pos)
+        
+        if self.harmless_mode_ghost_red:
+            self.ghost_render('harmless', self.ghost_red_pos)
+        else:
+            self.ghost_render('red', self.ghost_red_pos)
+        
+        # Mover fantasmas para o jogo quando necessário
+        if self.sprite_frame == 60:
+            if self.ghost_blue_pos == GHOST_BLUE_POS:
+                self.moving_ghost_into_the_game('blue')
+            elif self.ghost_orange_pos == GHOST_ORANGE_POS:
+                self.moving_ghost_into_the_game('orange')
+            elif self.ghost_pink_pos == GHOST_PINK_POS:
+                self.moving_ghost_into_the_game('pink')
+            elif self.ghost_red_pos == GHOST_RED_POS:
+                self.moving_ghost_into_the_game('red')
+    
+    def ghost_and_pacman_collider(self):
+        """Verifica colisões entre Pacman e fantasmas"""
+        # Colisão com fantasma azul
+        if self.distance_ghost_blue_to_pac_man <= COLLISION_DISTANCE:
+            if self.harmless_mode_ghost_blue:
+                self.ghost_blue_pos = GHOST_BLUE_POS.copy()
+                self.harmless_mode_ghost_blue = False
+                self.distance_ghost_blue_to_pac_man = self.distance_ghost_to_pac_man(self.ghost_blue_pos)
+                self.score += GHOST_POINTS
+            else:
+                if self.end_game == False:
+                    self.sprite_frame = 0
+                    self.sprite_speed = 1
+                    self.lives -= 1
+                self.end_game = True
+        
+        # Colisão com fantasma laranja
+        elif self.distance_ghost_orange_to_pac_man <= COLLISION_DISTANCE:
+            if self.harmless_mode_ghost_orange:
+                self.ghost_orange_pos = GHOST_ORANGE_POS.copy()
+                self.harmless_mode_ghost_orange = False
+                self.distance_ghost_orange_to_pac_man = self.distance_ghost_to_pac_man(self.ghost_orange_pos)
+                self.score += GHOST_POINTS
+            else:
+                if self.end_game == False:
+                    self.sprite_frame = 0
+                    self.sprite_speed = 1
+                    self.lives -= 1
+                self.end_game = True
+        
+        # Colisão com fantasma rosa
+        elif self.distance_ghost_pink_to_pac_man <= COLLISION_DISTANCE:
+            if self.harmless_mode_ghost_pink:
+                self.ghost_pink_pos = GHOST_PINK_POS.copy()
+                self.harmless_mode_ghost_pink = False
+                self.distance_ghost_pink_to_pac_man = self.distance_ghost_to_pac_man(self.ghost_pink_pos)
+                self.score += GHOST_POINTS
+            else:
+                if self.end_game == False:
+                    self.sprite_frame = 0
+                    self.sprite_speed = 1
+                    self.lives -= 1
+                self.end_game = True
+        
+        # Colisão com fantasma vermelho
+        elif self.distance_ghost_red_to_pac_man <= COLLISION_DISTANCE:
+            if self.harmless_mode_ghost_red:
+                self.ghost_red_pos = GHOST_RED_POS.copy()
+                self.harmless_mode_ghost_red = False
+                self.distance_ghost_red_to_pac_man = self.distance_ghost_to_pac_man(self.ghost_red_pos)
+                self.score += GHOST_POINTS
+            else:
+                if self.end_game == False:
+                    self.sprite_frame = 0
+                    self.sprite_speed = 1
+                    self.lives -= 1
+                self.end_game = True
+    
+    def restart_ghost_collision(self):
+        """Reinicia após colisão com fantasma"""
+        if self.sprite_frame == 60 and self.end_game == True and self.lives > -1:
+            self.end_game = False
+            self.harmless_mode = False
+            self.harmless_mode_timer = 0
+            self.harmless_mode_ghost_blue = False
+            self.harmless_mode_ghost_orange = False
+            self.harmless_mode_ghost_pink = False
+            self.harmless_mode_ghost_red = False
+            self.pac_man_pos = PACMAN_START_POS.copy()
+            self.pac_man_direction = PACMAN_START_DIR.copy()
+            self.pac_man_next_direction = PACMAN_START_DIR.copy()
+            self.ghost_blue_pos = GHOST_BLUE_POS.copy()
+            self.ghost_orange_pos = GHOST_ORANGE_POS.copy()
+            self.ghost_pink_pos = GHOST_PINK_POS.copy()
+            self.ghost_red_pos = GHOST_RED_POS.copy()
+            self.distance_ghost_blue_to_pac_man = self.distance_ghost_to_pac_man(self.ghost_blue_pos)
+            self.distance_ghost_orange_to_pac_man = self.distance_ghost_to_pac_man(self.ghost_orange_pos)
+            self.distance_ghost_pink_to_pac_man = self.distance_ghost_to_pac_man(self.ghost_pink_pos)
+            self.distance_ghost_red_to_pac_man = self.distance_ghost_to_pac_man(self.ghost_red_pos)
+            self.sprite_speed = SPRITE_SPEED
+            self.end_game = False
+    
+    def collect_all_dots(self):
+        """Verifica se todos os pontos foram coletados"""
+        count = 0
+        for y in range(len(self.map)):
+            for x in range(len(self.map[0])):
+                if self.map[y][x] == DOT or self.map[y][x] == POWER_PELLET:
+                    count += 1
+        if count == 0:
+            self.end_game = False
+            self.harmless_mode = False
+            self.harmless_mode_timer = 0
+            self.harmless_mode_ghost_blue = False
+            self.harmless_mode_ghost_orange = False
+            self.harmless_mode_ghost_pink = False
+            self.harmless_mode_ghost_red = False
+            self.pac_man_pos = PACMAN_START_POS.copy()
+            self.pac_man_direction = PACMAN_START_DIR.copy()
+            self.pac_man_next_direction = PACMAN_START_DIR.copy()
+            self.ghost_blue_pos = GHOST_BLUE_POS.copy()
+            self.ghost_orange_pos = GHOST_ORANGE_POS.copy()
+            self.ghost_pink_pos = GHOST_PINK_POS.copy()
+            self.ghost_red_pos = GHOST_RED_POS.copy()
+            self.distance_ghost_blue_to_pac_man = self.distance_ghost_to_pac_man(self.ghost_blue_pos)
+            self.distance_ghost_orange_to_pac_man = self.distance_ghost_to_pac_man(self.ghost_orange_pos)
+            self.distance_ghost_pink_to_pac_man = self.distance_ghost_to_pac_man(self.ghost_pink_pos)
+            self.distance_ghost_red_to_pac_man = self.distance_ghost_to_pac_man(self.ghost_red_pos)
+            self.sprite_speed = SPRITE_SPEED
+            self.end_game = False
+            self.map = [row[:] for row in GAME_MAP]
+    
+    def scoreboard(self):
+        """Desenha a pontuação e vidas"""
+        score_text = self.font.render(f'Score: {str(self.score)}', 1, self.white)
+        lives_text = self.font.render(f'Lives: {str(max(self.lives, 0))}X', 1, self.white)
+        x_score_pos = (self.window.get_width() / 2) - (score_text.get_width() / 2)
+        y_score_pos = self.scale * 30.75
+        x_lives_pos = (self.window.get_width() / 2) - (lives_text.get_width() / 2)
+        y_lives_pos = self.scale * 33
+        self.window.blit(score_text, (x_score_pos, y_score_pos))
+        self.window.blit(lives_text, (x_lives_pos, y_lives_pos))
+        if self.lives == -1:
+            end_text = self.font.render('game', 1, self.white)
+            game_text = self.font.render('over', 1, self.white)
+            x_end_pos = (self.window.get_width() / 2) - (end_text.get_width() / 2)
+            y_end_pos = self.scale * 12.25
+            x_game_pos = (self.window.get_width() / 2) - (game_text.get_width() / 2)
+            y_game_pos = self.scale * 13.75
+            self.window.blit(end_text, (x_end_pos, y_end_pos))
+            self.window.blit(game_text, (x_game_pos, y_game_pos))
+    
+    def restart(self):
+        """Reinicia o jogo"""
+        self.sprite_frame = 0
+        self.sprite_speed = SPRITE_SPEED
+        self.score = 0
+        self.lives = 5
+        self.end_game = False
+        self.harmless_mode = False
+        self.harmless_mode_timer = 0
+        self.harmless_mode_ghost_blue = False
+        self.harmless_mode_ghost_orange = False
+        self.harmless_mode_ghost_pink = False
+        self.harmless_mode_ghost_red = False
+        self.pac_man_pos = PACMAN_START_POS.copy()
+        self.pac_man_direction = PACMAN_START_DIR.copy()
+        self.pac_man_next_direction = PACMAN_START_DIR.copy()
+        self.ghost_blue_pos = GHOST_BLUE_POS.copy()
+        self.ghost_orange_pos = GHOST_ORANGE_POS.copy()
+        self.ghost_pink_pos = GHOST_PINK_POS.copy()
+        self.ghost_red_pos = GHOST_RED_POS.copy()
+        self.ghost_blue_direction = [0, 0]
+        self.ghost_orange_direction = [0, 0]
+        self.ghost_pink_direction = [0, 0]
+        self.ghost_red_direction = [0, 0]
+        self.ghost_blue_next_direction = [0, 0]
+        self.ghost_orange_next_direction = [0, 0]
+        self.ghost_pink_next_direction = [0, 0]
+        self.ghost_red_next_direction = [0, 0]
+        self.distance_ghost_blue_to_pac_man = self.distance_ghost_to_pac_man(self.ghost_blue_pos)
+        self.distance_ghost_orange_to_pac_man = self.distance_ghost_to_pac_man(self.ghost_orange_pos)
+        self.distance_ghost_pink_to_pac_man = self.distance_ghost_to_pac_man(self.ghost_pink_pos)
+        self.distance_ghost_red_to_pac_man = self.distance_ghost_to_pac_man(self.ghost_red_pos)
+        self.map = [row[:] for row in GAME_MAP]
     
     def run(self):
         """Loop principal do jogo"""
-        self.running = True
-        self.last_frame_time = pygame.time.get_ticks()
-        
-        while self.running:
-            # Calcular delta time
-            current_time = pygame.time.get_ticks()
-            delta_time = (current_time - self.last_frame_time) / 1000.0  # Converter para segundos
-            self.last_frame_time = current_time
+        running = True
+        while running:
+            for event in pg.event.get():
+                if event.type == pg.QUIT:
+                    running = False
+                if event.type == pg.KEYDOWN:
+                    self.move(pg.key.name(event.key))
+                    if pg.key.name(event.key) == 'escape':
+                        running = False
             
-            self._handle_events()
-            self._update(delta_time)
-            self._render()
+            # Atualizar jogo
             self.clock.tick(FPS)
-    
-    def _handle_events(self):
-        """Processa eventos do pygame"""
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                self.running = False
+            self.clear_window()
+            self.board()
+            self.animation_step()
+            self.player()
+            self.ghost()
+            self.collect_dots()
+            self.ghost_manager()
+            self.ghost_and_pacman_collider()
+            self.scoreboard()
+            self.restart_ghost_collision()
+            self.collect_all_dots()
             
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_p:
-                    if self.game_mode in [STARTING, FAILED, WON]:
-                        if self.game_mode == STARTING:
-                            self.game_mode = PLAYING
-                            self._start_game()
-                        else:
-                            self.game_mode = STARTING
-                
-                elif event.key == pygame.K_ESCAPE:
-                    self.running = False
-                
-                elif self.pacman and self.game_mode == PLAYING:
-                    if event.key == pygame.K_RIGHT:
-                        self.pacman.set_next_direction(RIGHT)
-                    elif event.key == pygame.K_LEFT:
-                        self.pacman.set_next_direction(LEFT)
-                    elif event.key == pygame.K_UP:
-                        self.pacman.set_next_direction(UP)
-                    elif event.key == pygame.K_DOWN:
-                        self.pacman.set_next_direction(DOWN)
-    
-    def _update(self, delta_time: float):
-        """Atualiza a lógica do jogo"""
-        current_time = pygame.time.get_ticks()
+            pg.display.update()
         
-        if current_time - self.last_update > MOVEMENT_DELAY and self.game_mode == PLAYING:
-            if self.pacman and self.scene:
-                if self.pacman.is_alive():
-                    if self.scene.all_coins_collected():
-                        self.game_mode = WON
-                        # Reiniciar o jogo automaticamente após vitória
-                        self._restart_level()
-                    else:
-                        # Mover Pacman
-                        self.pacman.move(self.scene, delta_time)
-                        
-                        # Mover fantasmas com IA
-                        for phantom in self.phantoms:
-                            if phantom and phantom.status != DEAD:
-                                phantom.move(self.scene, self.pacman.x, self.pacman.y, delta_time)
-                                
-                                # Verificar colisão com Pacman
-                                distance = phantom._calculate_distance_to_pacman(self.pacman.x, self.pacman.y)
-                                
-                                if distance <= 1.1:  # Colisão próxima
-                                    if self.pacman.power > 0:
-                                        # Pacman come o fantasma
-                                        phantom.status = DEAD
-                                        phantom.step = 0
-                                        phantom.harmless_mode = False
-                                        self.pacman.points += 200
-                                        # Reposicionar fantasma morto no centro
-                                        phantom.x = 13
-                                        phantom.y = 12
-                                    else:
-                                        # Fantasma mata Pacman
-                                        self.pacman.life = 0
-                                        self.pacman.end_game = True
-                                        self.pacman.sprite_frame = 0
-                                        self.pacman.sprite_speed = 1
-                        
-                        # Atualizar modo dos fantasmas baseado no poder do Pacman
-                        for phantom in self.phantoms:
-                            if phantom and phantom.status != DEAD:
-                                phantom.harmless_mode = (self.pacman.power > 0)
-                else:
-                    # Verificar se a animação de morte terminou
-                    if self.pacman.sprite_frame >= 60:
-                        self.game_mode = FAILED
-            
-            self.last_update = current_time
-    
-    def _render(self):
-        """Renderiza o jogo na tela"""
-        # Limpar tela
-        self.screen.fill((0, 0, 0))
-        
-        # Desenhar cenário
-        if self.scene:
-            self._draw_scene()
-        
-        # Desenhar Pacman
-        if self.pacman:
-            self._draw_pacman()
-        
-        # Desenhar fantasmas
-        for phantom in self.phantoms:
-            if phantom:
-                self._draw_phantom(phantom)
-        
-        # Desenhar informações do jogo (pontuação, etc.)
-        if self.pacman and self.game_mode == PLAYING:
-            self._draw_hud()
-        
-        # Desenhar interface
-        if self.game_mode == STARTING and self.game_start_sprite:
-            self.screen.blit(self.game_start_sprite, (0, 0))
-        elif self.game_mode == FAILED and self.game_over_sprite:
-            self.screen.blit(self.game_over_sprite, (0, 0))
-        elif self.game_mode == WON and self.game_won_sprite:
-            self.screen.blit(self.game_won_sprite, (0, 0))
-        
-        # Atualizar display
-        pygame.display.flip()
-    
-    def _draw_hud(self):
-        """Desenha informações do jogo (HUD)"""
-        if not hasattr(self, '_font'):
-            # Inicializar fonte se não existir
-            self._font = pygame.font.Font(None, 24)
-        
-        # Desenhar pontuação centralizada
-        score_text = self._font.render(f"Score: {self.pacman.points}", True, (255, 255, 255))
-        score_x = (WINDOW_SIZE - score_text.get_width()) // 2
-        score_y = WINDOW_SIZE - 60
-        self.screen.blit(score_text, (score_x, score_y))
-        
-        # Desenhar vidas
-        lives_text = self._font.render(f"Lives: {max(self.pacman.life, 0)}X", True, (255, 255, 255))
-        lives_x = (WINDOW_SIZE - lives_text.get_width()) // 2
-        lives_y = WINDOW_SIZE - 30
-        self.screen.blit(lives_text, (lives_x, lives_y))
-        
-        # Desenhar status do poder
-        if self.pacman.power > 0:
-            power_text = self._font.render(f"Power: {self.pacman.power}", True, (255, 255, 0))
-            self.screen.blit(power_text, (10, 10))
-    
-    def _draw_scene(self):
-        """Desenha o cenário do jogo"""
-        for i in range(MAP_SIZE):
-            for j in range(MAP_SIZE):
-                x = j * CELL_SIZE
-                y = i * CELL_SIZE
-                
-                scene_type = SCENES_POSITION[i][j]
-                
-                # Desenhar fundo vazio primeiro
-                self.screen.blit(self.scene_sprites[0], (x, y))  # empty.png
-                
-                # Desenhar elementos específicos baseado no tipo de cena
-                if scene_type == 1:  # Moeda
-                    if self.scene.map[i][j] == COIN_WAY:
-                        self.screen.blit(self.scene_sprites[1], (x, y))  # coin.png
-                elif scene_type == 2:  # Power pellet
-                    if self.scene.map[i][j] == POWER_WAY:
-                        self.screen.blit(self.scene_sprites[2], (x, y))  # power.png
-                elif scene_type == 3:  # Parede vertical
-                    self.screen.blit(self.scene_sprites[3], (x, y))  # vertical.png
-                elif scene_type == 4:  # Parede horizontal
-                    self.screen.blit(self.scene_sprites[4], (x, y))  # horizontal.png
-                elif scene_type == 5:  # Curva base esquerda
-                    self.screen.blit(self.scene_sprites[5], (x, y))  # curve-base-left.png
-                elif scene_type == 6:  # Curva base direita
-                    self.screen.blit(self.scene_sprites[6], (x, y))  # curve-base-right.png
-                elif scene_type == 7:  # Curva topo esquerda
-                    self.screen.blit(self.scene_sprites[7], (x, y))  # curve-top-left.png
-                elif scene_type == 8:  # Curva topo direita
-                    self.screen.blit(self.scene_sprites[8], (x, y))  # curve-top-right.png
-                elif scene_type == 9:  # Final esquerda
-                    self.screen.blit(self.scene_sprites[9], (x, y))  # end-left.png
-                elif scene_type == 10:  # Final direita
-                    self.screen.blit(self.scene_sprites[10], (x, y))  # end-right.png
-                elif scene_type == 11:  # Final base
-                    self.screen.blit(self.scene_sprites[11], (x, y))  # end-base.png
-                elif scene_type == 12:  # Final topo
-                    self.screen.blit(self.scene_sprites[12], (x, y))  # end-top.png
-    
-    def _draw_pacman(self):
-        """Desenha o Pacman com animação baseada em frames"""
-        # Calcular posição na tela
-        screen_x = self.pacman.x * CELL_SIZE
-        screen_y = self.pacman.y * CELL_SIZE
-        
-        # Sistema de animação baseado em frames (como no exemplo)
-        if self.pacman.end_game:
-            # Animação de morte
-            if self.pacman.sprite_frame <= 5:
-                sprite_index = 5
-            elif self.pacman.sprite_frame <= 10:
-                sprite_index = 6
-            elif self.pacman.sprite_frame <= 15:
-                sprite_index = 7
-            elif self.pacman.sprite_frame <= 20:
-                sprite_index = 8
-            elif self.pacman.sprite_frame <= 25:
-                sprite_index = 9
-            elif self.pacman.sprite_frame <= 30:
-                sprite_index = 10
-            elif self.pacman.sprite_frame <= 35:
-                sprite_index = 11
-            elif self.pacman.sprite_frame <= 40:
-                sprite_index = 12
-            elif self.pacman.sprite_frame <= 45:
-                sprite_index = 13
-            elif self.pacman.sprite_frame <= 50:
-                sprite_index = 14
-            elif self.pacman.sprite_frame <= 55:
-                sprite_index = 15
-            else:
-                sprite_index = 16
-        else:
-            # Animação normal baseada na direção
-            if self.pacman.sprite_frame <= 6:
-                sprite_index = self.pacman.direction * 3 + 0
-            elif self.pacman.sprite_frame <= 12:
-                sprite_index = self.pacman.direction * 3 + 0
-            elif self.pacman.sprite_frame <= 18:
-                sprite_index = self.pacman.direction * 3 + 1
-            elif self.pacman.sprite_frame <= 24:
-                sprite_index = self.pacman.direction * 3 + 2
-            elif self.pacman.sprite_frame <= 30:
-                sprite_index = self.pacman.direction * 3 + 2
-            elif self.pacman.sprite_frame <= 36:
-                sprite_index = self.pacman.direction * 3 + 2
-            elif self.pacman.sprite_frame <= 42:
-                sprite_index = self.pacman.direction * 3 + 2
-            elif self.pacman.sprite_frame <= 48:
-                sprite_index = self.pacman.direction * 3 + 2
-            elif self.pacman.sprite_frame <= 54:
-                sprite_index = self.pacman.direction * 3 + 1
-            else:
-                sprite_index = self.pacman.direction * 3 + 0
-        
-        # Garantir que o índice está dentro dos limites
-        sprite_index = min(sprite_index, len(self.pacman_sprites) - 1)
-        self.screen.blit(self.pacman_sprites[sprite_index], (screen_x, screen_y))
-    
-    def _draw_phantom(self, phantom: Phantom):
-        """Desenha um fantasma com animação baseada em frames"""
-        # Calcular posição na tela
-        screen_x = phantom.x * CELL_SIZE
-        screen_y = phantom.y * CELL_SIZE
-        
-        # Sistema de animação baseado em frames (como no exemplo)
-        if phantom.harmless_mode:
-            # Fantasma em modo fuga - usar sprites azuis
-            if phantom.sprite_frame <= 15:
-                sprite_index = 16  # Harmless ghost frame 0
-            elif phantom.sprite_frame <= 30:
-                sprite_index = 17  # Harmless ghost frame 1
-            elif phantom.sprite_frame <= 45:
-                sprite_index = 16  # Harmless ghost frame 0
-            else:
-                sprite_index = 17  # Harmless ghost frame 1
-        else:
-            # Fantasma normal - usar sprites baseados no ID
-            if phantom.sprite_frame <= 15:
-                sprite_index = phantom.id + 0  # Frame 0
-            elif phantom.sprite_frame <= 30:
-                sprite_index = phantom.id + 1  # Frame 1
-            elif phantom.sprite_frame <= 45:
-                sprite_index = phantom.id + 0  # Frame 0
-            else:
-                sprite_index = phantom.id + 1  # Frame 1
-        
-        # Garantir que o índice está dentro dos limites
-        sprite_index = min(sprite_index, len(self.phantom_sprites) - 1)
-        self.screen.blit(self.phantom_sprites[sprite_index], (screen_x, screen_y))
-    
-    def _start_game(self):
-        """Inicia uma nova partida"""
-        # Criar cenário
-        self.scene = Scene()
-        
-        # Criar Pacman na posição inicial correta
-        self.pacman = Pacman(13, 20)  # Posição mais adequada no mapa
-        
-        # Criar fantasmas nas posições iniciais corretas
-        self.phantoms[0] = Phantom(12, 11, PH_ORANGE, LEFT)
-        self.phantoms[1] = Phantom(13, 11, PH_PINK, RIGHT)
-        self.phantoms[2] = Phantom(12, 13, PH_CYAN, LEFT)
-        self.phantoms[3] = Phantom(13, 13, PH_RED, RIGHT)
-        
-        # Resetar timer de movimento
-        self.last_update = pygame.time.get_ticks()
-        self.last_frame_time = pygame.time.get_ticks()
-    
-    def _restart_level(self):
-        """Reinicia o nível após vitória"""
-        # Criar novo cenário
-        self.scene = Scene()
-        
-        # Resetar Pacman
-        self.pacman.x = 13
-        self.pacman.y = 20
-        self.pacman.direction = RIGHT
-        self.pacman.next_direction = RIGHT
-        self.pacman.end_game = False
-        self.pacman.sprite_frame = 0
-        self.pacman.sprite_speed = 2
-        
-        # Resetar fantasmas
-        self.phantoms[0] = Phantom(12, 11, PH_ORANGE, LEFT)
-        self.phantoms[1] = Phantom(13, 11, PH_PINK, RIGHT)
-        self.phantoms[2] = Phantom(12, 13, PH_CYAN, LEFT)
-        self.phantoms[3] = Phantom(13, 13, PH_RED, RIGHT)
-        
-        # Resetar timer
-        self.last_update = pygame.time.get_ticks()
-        self.last_frame_time = pygame.time.get_ticks()
-    
-    def quit(self):
-        """Finaliza o jogo"""
-        pygame.quit()
-        sys.exit()
+        pg.quit()
+        quit()

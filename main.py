@@ -1,22 +1,23 @@
 #!/usr/bin/env python3
 """
-Pac-Man Game - Python/pygame-ce version
-Conversão do jogo Pac-Man de C++/SDL2 para Python/pygame-ce
+Pac-Man Game - Python/pygame version
+Baseado na lógica do arquivo Pac_Man.py
 """
 
 import pygame
 import sys
-from src.game import Game
+from src.game import PacMan
 
 def main():
     """Função principal do jogo"""
-    game = Game()
+    # Inicializar pygame
+    pygame.init()
     
-    if not game.init():
-        print("Falha ao inicializar o jogo!")
-        return -1
+    # Criar instância do jogo com escala 26
+    jogo = PacMan(26)
     
-    game.run()
+    # Executar o jogo
+    jogo.run()
     return 0
 
 if __name__ == "__main__":
