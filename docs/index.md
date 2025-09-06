@@ -106,7 +106,7 @@ Este projeto está sob a licença MIT. Veja o arquivo LICENSE para detalhes.
 
 ## 🔗 Links Úteis
 
-- **Repositório**: [GitHub](https://github.com/gab-braga/pacman)
+- **Repositório**: [GitHub](https://github.com/gabryel-lima/pacman)
 - **pygame-ce**: [Documentação](https://pygame-ce.readthedocs.io/)
 - **Python**: [Documentação](https://docs.python.org/)
 

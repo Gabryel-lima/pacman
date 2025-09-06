@@ -48,7 +48,7 @@ pip install pygame-ce
 
 ### Método rápido
 ```bash
-git clone https://github.com/gab-braga/pacman.git
+git clone https://github.com/gabryel-lima/pacman.git
 cd pacman
 pip install -r requirements.txt
 python main.py
@@ -58,7 +58,7 @@ python main.py
 
 1. Clone este repositório:
 ```bash
-git clone https://github.com/gab-braga/pacman.git
+git clone https://github.com/gabryel-lima/pacman.git
 cd pacman
 ```
 
@@ -183,7 +183,7 @@ Este projeto foi completamente revisado e corrigido para garantir funcionalidade
 
 ## Visualização
 
-![Pac-Man](https://github.com/gab-braga/pacman/blob/master/pacman.gif)
+![Pac-Man](https://github.com/gabryel-lima/pacman/blob/master/pacman.gif)
 
 ## Licença
 
