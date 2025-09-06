@@ -17,6 +17,9 @@ Esta documentação fornece informações detalhadas sobre o jogo Pac-Man implem
 O Pac-Man é um jogo clássico de arcade onde o jogador controla o Pac-Man através de um labirinto, coletando pontos e evitando fantasmas. Esta implementação inclui:
 
 - ✅ Sistema de controles completo (teclado + Xbox/genéricos)
+- ✅ Sistema de menu e seleção de modo
+- ✅ Suporte a múltiplos jogadores (Player 1, 2, 3)
+- ✅ Contagem regressiva antes do início
 - ✅ IA dos fantasmas com diferentes comportamentos
 - ✅ Sistema de pontuação e vidas
 - ✅ Modo inofensivo (power pellets)
@@ -58,6 +61,11 @@ O Pac-Man é um jogo clássico de arcade onde o jogador controla o Pac-Man atrav
 
 ## Como Jogar
 
+### Início do Jogo
+1. **Seleção de Modo**: Escolha entre Player 1, 2 ou 3
+2. **Contagem Regressiva**: Aguarde 2 segundos para o jogo iniciar
+3. **Controles**: Use os controles específicos do modo selecionado
+
 ### Objetivo
 Colete todos os pontos (dots) no labirinto enquanto evita os fantasmas. Coma power pellets para tornar os fantasmas temporariamente inofensivos.
 
@@ -95,7 +103,8 @@ pacman/
 ├── src/
 │   ├── game.py          # Lógica principal do jogo
 │   ├── constants.py     # Constantes e configurações
-│   └── controller.py    # Sistema de controles
+│   ├── controller.py    # Sistema de controles
+│   └── menu.py          # Sistema de menu e seleção
 ├── img/                 # Sprites e imagens
 ├── docs/                # Documentação
 └── requirements.txt     # Dependências
@@ -113,7 +122,12 @@ pacman/
 - Mapeia botões para ações
 - Suporta múltiplos tipos de controle
 
-#### 3. Constantes (`src/constants.py`)
+#### 3. Sistema de Menu (`src/menu.py`)
+- Menu de seleção de modo
+- Navegação intuitiva
+- Suporte a múltiplos jogadores
+
+#### 4. Constantes (`src/constants.py`)
 - Configurações do jogo
 - Mapa do labirinto
 - Valores de pontuação
@@ -122,15 +136,17 @@ pacman/
 
 ```mermaid
 graph TD
-    A[Inicialização] --> B[Detecta Controles]
-    B --> C[Loop Principal]
-    C --> D[Processa Input]
-    D --> E[Atualiza Física]
-    E --> F[Renderiza Frame]
-    F --> G[Verifica Condições]
-    G --> H{Game Over?}
-    H -->|Não| C
-    H -->|Sim| I[Finaliza]
+    A[Inicialização] --> B[Menu de Seleção]
+    B --> C[Contagem Regressiva]
+    C --> D[Detecta Controles]
+    D --> E[Loop Principal]
+    E --> F[Processa Input]
+    F --> G[Atualiza Física]
+    G --> H[Renderiza Frame]
+    H --> I[Verifica Condições]
+    I --> J{Game Over?}
+    J -->|Não| E
+    J -->|Sim| K[Finaliza]
 ```
 
 ## Desenvolvimento
@@ -197,6 +213,6 @@ Para problemas específicos:
 
 ---
 
-**Versão**: 1.0  
+**Versão**: 1.2  
 **Última atualização**: 2024  
 **Compatibilidade**: Python 3.7+, pygame-ce 2.4.0+

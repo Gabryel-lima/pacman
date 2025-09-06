@@ -2,6 +2,22 @@
 
 Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 
+## [1.2.0] - 2024-12-19
+
+### ✨ Adicionado
+- **Sistema de menu e seleção de modo**
+  - Menu interativo para seleção de modo de jogo
+  - Suporte a múltiplos jogadores (Player 1, 2, 3)
+  - Contagem regressiva visual antes do início do jogo
+  - Navegação intuitiva com setas e Enter
+  - Controles específicos para cada modo de jogo
+
+- **Melhorias na experiência do usuário**
+  - Contagem regressiva de 2 segundos antes de iniciar
+  - Feedback visual melhorado no menu
+  - Instruções de controles exibidas no menu
+  - Sistema de reset automático do menu
+
 ## [1.1.0] - 2024-12-19
 
 ### ✨ Adicionado
@@ -34,6 +50,7 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
   - Organização da documentação em pasta `docs/`
   - Separação clara de responsabilidades
   - Código mais limpo e manutenível
+  - Adicionado arquivo `menu.py` para sistema de menu
 
 ### 🐛 Corrigido
 - **Remoção de logs desnecessários**
@@ -46,6 +63,7 @@ Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
   - Seção de controles expandida
   - Links para documentação completa
   - Lista de controles suportados
+  - Documentação do sistema de menu
 
 - **Nova documentação**
   - `docs/README.md` - Documentação principal

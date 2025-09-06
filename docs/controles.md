@@ -4,20 +4,46 @@ Este jogo suporta tanto controles de teclado quanto controles de Xbox e controle
 
 ## Controles de Teclado
 
+### No Menu
+- **Setas (↑/↓)**: Navegar entre opções
+- **ENTER**: Confirmar seleção
+- **ESC**: Sair do jogo
+
+### No Jogo
 - **WASD** ou **Setas**: Mover o Pac-Man
 - **R**: Reiniciar o jogo
 - **ESC**: Sair do jogo
 
 ## Controles de Xbox/Genéricos
 
-### Movimento
+### No Menu
+- **D-pad (↑/↓)**: Navegar entre opções
+- **A**: Confirmar seleção
+- **ESC** (teclado): Sair do jogo
+
+### No Jogo
 - **D-pad**: Mover o Pac-Man (cima, baixo, esquerda, direita)
 - **Analógico esquerdo**: Mover o Pac-Man (mais preciso que o D-pad)
-
-### Botões Especiais
 - **Start**: Reiniciar o jogo
-- **A**: Ação (pode ser usado para confirmar ações futuras)
 - **ESC** (teclado): Sair do jogo
+
+## Modos de Jogo
+
+O jogo oferece três modos diferentes, cada um com controles específicos:
+
+### Player 1
+- **Controles**: WASD
+- **Descrição**: Modo padrão para um jogador
+
+### Player 2
+- **Controles**: Setas direcionais
+- **Descrição**: Modo alternativo para um jogador
+
+### Player 3
+- **Controles**: IJKL
+- **Descrição**: Modo adicional para um jogador
+
+> **Nota**: Atualmente, todos os modos são para um jogador. Os diferentes controles permitem personalizar a experiência de jogo.
 
 ## Detecção Automática
 

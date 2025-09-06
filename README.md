@@ -5,7 +5,7 @@ O jogo foi convertido de C++/SDL2 para Python para ser mais acessível e fácil 
 
 ## Tecnologias utilizadas
 
-* **Python 3.8+**: Linguagem de programação principal
+* **Python 3.7+**: Linguagem de programação principal
 * **pygame-ce**: Biblioteca gráfica moderna para jogos em Python
 * **Type hints**: Para melhor documentação e desenvolvimento
 
@@ -20,13 +20,16 @@ O jogo foi convertido de C++/SDL2 para Python para ser mais acessível e fácil 
 * **🎮 Suporte completo a controles Xbox e genéricos**
 * **🔧 Detecção automática de controles**
 * **📱 Feedback visual de controles conectados**
+* **🎯 Sistema de seleção de modo de jogo**
+* **⏱️ Contagem regressiva antes do início**
+* **👥 Suporte a múltiplos jogadores (Player 1, 2, 3)**
 * Código Python orientado a objetos e bem estruturado
 
 ## Pré-requisitos
 
 Para executar o jogo, você precisa ter instalado:
 
-* Python 3.8 ou superior
+* Python 3.7 ou superior
 * pygame-ce (instalado automaticamente via pip)
 
 ### Instalação das dependências
@@ -75,11 +78,17 @@ python main.py
 * **WASD** ou **Setas direcionais**: Movem o Pac-Man pela tela
 * **R**: Reinicia o jogo
 * **ESC**: Sair do jogo
+* **ENTER**: Confirmar seleção no menu
 
 ### Controles Xbox/Genéricos
 * **D-pad** ou **Analógico esquerdo**: Movem o Pac-Man
 * **Botão Start**: Reinicia o jogo
 * **ESC** (teclado): Sair do jogo
+
+### Modos de Jogo
+* **Player 1**: Controles WASD
+* **Player 2**: Setas direcionais
+* **Player 3**: Teclas IJKL
 
 > 📖 **[Documentação completa de controles](docs/controles.md)**
 
@@ -98,26 +107,36 @@ pacman/
 │   ├── __init__.py     # Pacote Python
 │   ├── game.py         # Classe principal do jogo
 │   ├── controller.py   # Sistema de controles
+│   ├── menu.py         # Sistema de menu e seleção de modo
 │   └── constants.py    # Constantes e configurações do jogo
 ├── img/                # Sprites e imagens do jogo
 ├── docs/               # Documentação completa
 │   ├── README.md       # Documentação principal
+│   ├── index.md        # Índice da documentação
 │   ├── controles.md    # Guia de controles
 │   ├── instalacao.md   # Guia de instalação
 │   └── arquitetura.md  # Documentação técnica
 ├── main.py             # Ponto de entrada do programa
 ├── requirements.txt    # Dependências Python
+├── CHANGELOG.md        # Histórico de mudanças
 └── README.md           # Este arquivo
 ```
 
 ## 📚 Documentação
 
-- 📖 **[Documentação Principal](docs/README.md)** - Visão geral completa
+- 📖 **[Índice da Documentação](docs/index.md)** - Navegação completa
+- 📋 **[Documentação Principal](docs/README.md)** - Visão geral completa
 - 🎮 **[Guia de Controles](docs/controles.md)** - Como usar controles Xbox/genéricos
 - ⚙️ **[Guia de Instalação](docs/instalacao.md)** - Instalação detalhada
 - 🏗️ **[Arquitetura](docs/arquitetura.md)** - Documentação técnica
 
-## 🎮 Novas Funcionalidades de Controles
+## 🎮 Novas Funcionalidades
+
+### Sistema de Menu e Seleção de Modo
+* **Menu interativo**: Seleção de modo de jogo antes de iniciar
+* **Múltiplos jogadores**: Suporte a Player 1, 2 e 3
+* **Contagem regressiva**: Preparação visual antes do início
+* **Navegação intuitiva**: Setas para navegar, Enter para confirmar
 
 ### Sistema de Controles Avançado
 * **Detecção automática**: Reconhece controles Xbox e genéricos automaticamente

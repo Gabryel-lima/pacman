@@ -8,6 +8,7 @@ import random
 import os
 from .constants import *
 from .controller import ControllerManager, ControllerType
+from .menu import MenuSelector
 
 
 class PacMan:
@@ -50,10 +51,22 @@ class PacMan:
         self.harmless_mode_ghost_pink = False
         self.harmless_mode_ghost_red = False
         
+        # Modo de jogo selecionado
+        self.game_mode = "Player 1"
+        
         # Posições e direções do Pacman (calculadas dinamicamente)
         self.pac_man_pos = [scale * 13.1, scale * 22.6]
         self.pac_man_direction = [scale/16, 0]
         self.pac_man_next_direction = [scale/16, 0]
+        
+        # Posições e direções para múltiplos jogadores
+        self.pac_man_2_pos = [scale * 12.1, scale * 22.6]  # Player 2 - à esquerda
+        self.pac_man_2_direction = [0, 0]
+        self.pac_man_2_next_direction = [0, 0]
+        
+        self.pac_man_3_pos = [scale * 14.1, scale * 22.6]  # Player 3 - à direita
+        self.pac_man_3_direction = [0, 0]
+        self.pac_man_3_next_direction = [0, 0]
         
         # Posições e direções dos fantasmas (calculadas dinamicamente)
         self.ghost_blue_pos = [scale * 12, scale * 13]
@@ -90,29 +103,76 @@ class PacMan:
         self.controller_manager = ControllerManager()
         self.controller_connected = self.controller_manager.get_controller_count() > 0
         self.controller_index = 0  # Usar o primeiro controle conectado
+        
+        # Mapeamento de controles para jogadores
+        self.player_controllers = {
+            1: 0,  # Player 1 usa controle 0
+            2: 1,  # Player 2 usa controle 1 (se disponível)
+            3: 2   # Player 3 usa controle 2 (se disponível)
+        }
     
     def _load_pacman_sprites(self):
-        """Carrega os sprites do Pacman"""
+        """Carrega os sprites do Pacman para todos os players"""
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         img_dir = os.path.join(base_dir, "img")
         
-        # Lista de sprites do Pacman (17 frames)
-        pacman_sprites = []
-        for i in range(1, 18):
-            sprite_path = os.path.join(img_dir, f"Pac_Man_{i}.png")
-            if os.path.exists(sprite_path):
-                sprite = pg.image.load(sprite_path)
-                scaled_sprite = pg.transform.scale(sprite, (self.scale * 1.3, self.scale * 1.3))
-                pacman_sprites.append(scaled_sprite)
-            else:
-                # Criar sprite placeholder se não existir
-                placeholder = pg.Surface((self.scale * 1.3, self.scale * 1.3))
-                placeholder.fill((255, 255, 0))  # Amarelo
-                pacman_sprites.append(placeholder)
+        # Cores dos players
+        player_colors = {
+            1: PLAYER_1_COLOR,  # Amarelo
+            2: PLAYER_2_COLOR,  # Verde
+            3: PLAYER_3_COLOR   # Rosa
+        }
         
-        # Atribuir sprites às variáveis
-        for i, sprite in enumerate(pacman_sprites):
-            setattr(self, f"pac_man_{i+1}", sprite)
+        # Carregar sprites para cada player
+        for player_num in range(1, 4):
+            pacman_sprites = []
+            for i in range(1, 18):
+                sprite_path = os.path.join(img_dir, f"Pac_Man_{i}.png")
+                if os.path.exists(sprite_path):
+                    sprite = pg.image.load(sprite_path)
+                    scaled_sprite = pg.transform.scale(sprite, (self.scale * 1.3, self.scale * 1.3))
+                    
+                    # Aplicar cor do player ao sprite
+                    colored_sprite = self._colorize_sprite(scaled_sprite, player_colors[player_num])
+                    pacman_sprites.append(colored_sprite)
+                else:
+                    # Criar sprite placeholder com cor do player
+                    placeholder = pg.Surface((self.scale * 1.3, self.scale * 1.3))
+                    placeholder.fill(player_colors[player_num])
+                    pacman_sprites.append(placeholder)
+            
+            # Atribuir sprites às variáveis específicas do player
+            for i, sprite in enumerate(pacman_sprites):
+                setattr(self, f"pac_man_{player_num}_{i+1}", sprite)
+    
+    def _colorize_sprite(self, sprite, color):
+        """Aplica uma cor a um sprite mantendo a transparência"""
+        # Criar uma cópia do sprite
+        colored_sprite = sprite.copy()
+        
+        # Converter para formato com alpha se necessário
+        if colored_sprite.get_flags() & pg.SRCALPHA:
+            # Sprite já tem canal alpha
+            pass
+        else:
+            # Converter para formato com alpha
+            colored_sprite = colored_sprite.convert_alpha()
+        
+        # Aplicar a cor pixel por pixel
+        for x in range(colored_sprite.get_width()):
+            for y in range(colored_sprite.get_height()):
+                pixel = colored_sprite.get_at((x, y))
+                if pixel[3] > 0:  # Se o pixel não é transparente
+                    # Aplicar a cor mantendo a intensidade original
+                    new_pixel = (
+                        int(pixel[0] * color[0] / 255),
+                        int(pixel[1] * color[1] / 255),
+                        int(pixel[2] * color[2] / 255),
+                        pixel[3]  # Manter alpha
+                    )
+                    colored_sprite.set_at((x, y), new_pixel)
+        
+        return colored_sprite
     
     def _load_ghost_sprites(self):
         """Carrega os sprites dos fantasmas"""
@@ -161,59 +221,111 @@ class PacMan:
         pg.draw.rect(self.window, self.black, (0, 0, self.window.get_width(), self.window.get_height()))
     
     def move(self, key):
-        """Processa entrada do teclado para movimento do Pacman"""
+        """Processa entrada do teclado para movimento dos Pacmans"""
         if key == 'r':
             self.restart()
-        elif key == 'w' or key == 'up':
-            self._set_direction('up')
-        elif key == 'a' or key == 'left':
-            self._set_direction('left')
-        elif key == 's' or key == 'down':
-            self._set_direction('down')
-        elif key == 'd' or key == 'right':
-            self._set_direction('right')
+        # Player 1 (WASD)
+        elif key == 'w':
+            self._set_direction('up', 1)
+        elif key == 'a':
+            self._set_direction('left', 1)
+        elif key == 's':
+            self._set_direction('down', 1)
+        elif key == 'd':
+            self._set_direction('right', 1)
+        # Player 2 (Arrow Keys)
+        elif key == 'up':
+            self._set_direction('up', 2)
+        elif key == 'left':
+            self._set_direction('left', 2)
+        elif key == 'down':
+            self._set_direction('down', 2)
+        elif key == 'right':
+            self._set_direction('right', 2)
+        # Player 3 (IJKL)
+        elif key == 'i':
+            self._set_direction('up', 3)
+        elif key == 'j':
+            self._set_direction('left', 3)
+        elif key == 'k':
+            self._set_direction('down', 3)
+        elif key == 'l':
+            self._set_direction('right', 3)
     
-    def _set_direction(self, direction):
+    def _set_direction(self, direction, player_num=1):
         """Define a direção do Pacman baseada no input"""
+        # Selecionar variáveis baseadas no jogador
+        if player_num == 1:
+            current_dir = self.pac_man_direction
+            next_dir = self.pac_man_next_direction
+        elif player_num == 2:
+            current_dir = self.pac_man_2_direction
+            next_dir = self.pac_man_2_next_direction
+        elif player_num == 3:
+            current_dir = self.pac_man_3_direction
+            next_dir = self.pac_man_3_next_direction
+        else:
+            return
+        
         if direction == 'up':
-            if self.pac_man_direction[0] == 0 and self.pac_man_direction[1] > 0:
-                self.pac_man_direction[0] = 0
-                self.pac_man_direction[1] = -self.scale/16
-                self.pac_man_next_direction[0] = 0
-                self.pac_man_next_direction[1] = -self.scale/16
-            elif self.pac_man_direction[0] != 0 and self.pac_man_direction[1] == 0:
-                self.pac_man_next_direction[0] = 0
-                self.pac_man_next_direction[1] = -self.scale/16
+            if current_dir[0] == 0 and current_dir[1] > 0:
+                current_dir[0] = 0
+                current_dir[1] = -self.scale/16
+                next_dir[0] = 0
+                next_dir[1] = -self.scale/16
+            elif current_dir[0] != 0 and current_dir[1] == 0:
+                next_dir[0] = 0
+                next_dir[1] = -self.scale/16
+            elif current_dir[0] == 0 and current_dir[1] == 0:  # Se parado, pode começar a se mover
+                current_dir[0] = 0
+                current_dir[1] = -self.scale/16
+                next_dir[0] = 0
+                next_dir[1] = -self.scale/16
         elif direction == 'left':
-            if self.pac_man_direction[0] > 0 and self.pac_man_direction[1] == 0:
-                self.pac_man_direction[0] = -self.scale/16
-                self.pac_man_direction[1] = 0
-                self.pac_man_next_direction[0] = -self.scale/16
-                self.pac_man_next_direction[1] = 0
-            elif self.pac_man_direction[0] == 0 and self.pac_man_direction[1] != 0:
-                self.pac_man_next_direction[0] = -self.scale/16
-                self.pac_man_next_direction[1] = 0
+            if current_dir[0] > 0 and current_dir[1] == 0:
+                current_dir[0] = -self.scale/16
+                current_dir[1] = 0
+                next_dir[0] = -self.scale/16
+                next_dir[1] = 0
+            elif current_dir[0] == 0 and current_dir[1] != 0:
+                next_dir[0] = -self.scale/16
+                next_dir[1] = 0
+            elif current_dir[0] == 0 and current_dir[1] == 0:  # Se parado, pode começar a se mover
+                current_dir[0] = -self.scale/16
+                current_dir[1] = 0
+                next_dir[0] = -self.scale/16
+                next_dir[1] = 0
         elif direction == 'down':
-            if self.pac_man_direction[0] == 0 and self.pac_man_direction[1] < 0:
-                self.pac_man_direction[0] = 0
-                self.pac_man_direction[1] = self.scale/16
-                self.pac_man_next_direction[0] = 0
-                self.pac_man_next_direction[1] = self.scale/16
-            elif self.pac_man_direction[0] != 0 and self.pac_man_direction[1] == 0:
-                self.pac_man_next_direction[0] = 0
-                self.pac_man_next_direction[1] = self.scale/16
+            if current_dir[0] == 0 and current_dir[1] < 0:
+                current_dir[0] = 0
+                current_dir[1] = self.scale/16
+                next_dir[0] = 0
+                next_dir[1] = self.scale/16
+            elif current_dir[0] != 0 and current_dir[1] == 0:
+                next_dir[0] = 0
+                next_dir[1] = self.scale/16
+            elif current_dir[0] == 0 and current_dir[1] == 0:  # Se parado, pode começar a se mover
+                current_dir[0] = 0
+                current_dir[1] = self.scale/16
+                next_dir[0] = 0
+                next_dir[1] = self.scale/16
         elif direction == 'right':
-            if self.pac_man_direction[0] < 0 and self.pac_man_direction[1] == 0:
-                self.pac_man_direction[0] = self.scale/16
-                self.pac_man_direction[1] = 0
-                self.pac_man_next_direction[0] = self.scale/16
-                self.pac_man_next_direction[1] = 0
-            elif self.pac_man_direction[0] == 0 and self.pac_man_direction[1] != 0:
-                self.pac_man_next_direction[0] = self.scale/16
-                self.pac_man_next_direction[1] = 0
+            if current_dir[0] < 0 and current_dir[1] == 0:
+                current_dir[0] = self.scale/16
+                current_dir[1] = 0
+                next_dir[0] = self.scale/16
+                next_dir[1] = 0
+            elif current_dir[0] == 0 and current_dir[1] != 0:
+                next_dir[0] = self.scale/16
+                next_dir[1] = 0
+            elif current_dir[0] == 0 and current_dir[1] == 0:  # Se parado, pode começar a se mover
+                current_dir[0] = self.scale/16
+                current_dir[1] = 0
+                next_dir[0] = self.scale/16
+                next_dir[1] = 0
     
     def handle_controller_input(self):
-        """Processa entrada dos controles"""
+        """Processa entrada dos controles para todos os jogadores ativos"""
         if not self.controller_connected:
             return
         
@@ -225,15 +337,32 @@ class PacMan:
             self.controller_connected = False
             return
         
-        # Obter input de movimento do controle
-        direction, has_input = self.controller_manager.get_movement_input(self.controller_index)
-        if has_input:
-            self._set_direction(direction)
+        # Player 1 (sempre ativo)
+        controller_1 = self.player_controllers[1]
+        if self.controller_manager.is_controller_connected(controller_1):
+            direction, has_input = self.controller_manager.get_movement_input(controller_1)
+            if has_input:
+                self._set_direction(direction, 1)
+            
+            special_buttons = self.controller_manager.get_special_buttons(controller_1)
+            if special_buttons.get('restart', False):
+                self.restart()
         
-        # Obter botões especiais
-        special_buttons = self.controller_manager.get_special_buttons(self.controller_index)
-        if special_buttons.get('restart', False):
-            self.restart()
+        # Player 2 (se modo Player 2 ou Player 3)
+        if self.game_mode in ["Player 2", "Player 3"]:
+            controller_2 = self.player_controllers[2]
+            if self.controller_manager.is_controller_connected(controller_2):
+                direction, has_input = self.controller_manager.get_movement_input(controller_2)
+                if has_input:
+                    self._set_direction(direction, 2)
+        
+        # Player 3 (se modo Player 3)
+        if self.game_mode == "Player 3":
+            controller_3 = self.player_controllers[3]
+            if self.controller_manager.is_controller_connected(controller_3):
+                direction, has_input = self.controller_manager.get_movement_input(controller_3)
+                if has_input:
+                    self._set_direction(direction, 3)
     
     def board(self):
         """Desenha o tabuleiro do jogo"""
@@ -261,10 +390,13 @@ class PacMan:
         else:
             self.sprite_frame += self.sprite_speed
     
-    def player_rotation(self, image):
+    def player_rotation(self, image, direction=None):
         """Rotaciona a imagem do Pacman baseada na direção"""
-        x_dir = self.pac_man_direction[0]
-        y_dir = self.pac_man_direction[1]
+        if direction is None:
+            direction = self.pac_man_direction
+            
+        x_dir = direction[0]
+        y_dir = direction[1]
         if x_dir > 0 and y_dir == 0:
             return image
         elif x_dir == 0 and y_dir > 0:
@@ -317,30 +449,52 @@ class PacMan:
         return direction, next_direction
     
     def collect_dots(self):
-        """Coleta pontos e power pellets"""
-        x_pac_man = self.pac_man_pos[0] + (self.scale * 0.65)
-        y_pac_man = self.pac_man_pos[1] + (self.scale * 0.65)
+        """Coleta pontos e power pellets para todos os jogadores ativos"""
+        # Lista de posições dos jogadores ativos
+        active_players = [self.pac_man_pos]  # Player 1 sempre ativo
+        
+        # Adicionar Player 2 se estiver ativo
+        if self.game_mode in ["Player 2", "Player 3"]:
+            active_players.append(self.pac_man_2_pos)
+        
+        # Adicionar Player 3 se estiver ativo
+        if self.game_mode == "Player 3":
+            active_players.append(self.pac_man_3_pos)
+        
         for y in range(len(self.map)):
             for x in range(len(self.map[0])):
                 if self.map[y][x] == DOT:
                     x_dot = (x * self.scale) + (self.scale / 4)
                     y_dot = (y * self.scale) + (self.scale / 4)
                     radius = self.scale / 5
-                    if x_pac_man >= x_dot - radius and x_pac_man <= x_dot + radius and y_pac_man >= y_dot - radius and y_pac_man <= y_dot + radius:
-                        self.map[y][x] = EMPTY
-                        self.score += DOT_POINTS
+                    
+                    # Verificar colisão com todos os jogadores ativos
+                    for player_pos in active_players:
+                        x_pac_man = player_pos[0] + (self.scale * 0.65)
+                        y_pac_man = player_pos[1] + (self.scale * 0.65)
+                        if x_pac_man >= x_dot - radius and x_pac_man <= x_dot + radius and y_pac_man >= y_dot - radius and y_pac_man <= y_dot + radius:
+                            self.map[y][x] = EMPTY
+                            self.score += DOT_POINTS
+                            break  # Sair do loop de jogadores se coletou o ponto
+                
                 if self.map[y][x] == POWER_PELLET:
                     x_dot = (x * self.scale) + (self.scale / 4)
                     y_dot = (y * self.scale) + (self.scale / 4)
                     radius = self.scale / 2
-                    if x_pac_man >= x_dot - radius and x_pac_man <= x_dot + radius and y_pac_man >= y_dot - radius and y_pac_man <= y_dot + radius:
-                        self.map[y][x] = EMPTY
-                        self.score += POWER_PELLET_POINTS
-                        self.harmless_mode = True
-                        self.harmless_mode_ghost_blue = True
-                        self.harmless_mode_ghost_orange = True
-                        self.harmless_mode_ghost_pink = True
-                        self.harmless_mode_ghost_red = True
+                    
+                    # Verificar colisão com todos os jogadores ativos
+                    for player_pos in active_players:
+                        x_pac_man = player_pos[0] + (self.scale * 0.65)
+                        y_pac_man = player_pos[1] + (self.scale * 0.65)
+                        if x_pac_man >= x_dot - radius and x_pac_man <= x_dot + radius and y_pac_man >= y_dot - radius and y_pac_man <= y_dot + radius:
+                            self.map[y][x] = EMPTY
+                            self.score += POWER_PELLET_POINTS
+                            self.harmless_mode = True
+                            self.harmless_mode_ghost_blue = True
+                            self.harmless_mode_ghost_orange = True
+                            self.harmless_mode_ghost_pink = True
+                            self.harmless_mode_ghost_red = True
+                            break  # Sair do loop de jogadores se coletou o power pellet
     
     def pacman_tunnel(self, position):
         """Implementa túneis laterais"""
@@ -352,62 +506,81 @@ class PacMan:
             x_pos = self.scale * 27.5
         return [x_pos, y_pos]
     
-    def player(self):
-        """Desenha e atualiza o Pacman"""
-        self.pac_man_direction, self.pac_man_next_direction = self.turning_corner(self.pac_man_pos, self.pac_man_direction, self.pac_man_next_direction)
-        self.pac_man_pos = self.collider(self.pac_man_pos, self.pac_man_direction)
-        self.pac_man_pos = self.pacman_tunnel(self.pac_man_pos)
-        x = self.pac_man_pos[0]
-        y = self.pac_man_pos[1]
+    def _render_pacman(self, pos, direction, is_dead=False, player_num=1):
+        """Renderiza um Pacman individual com cor específica do player"""
+        x = pos[0]
+        y = pos[1]
         
-        if self.end_game:
+        if is_dead:
             # Animação de morte
             if self.sprite_frame <= 5:
-                self.window.blit(self.player_rotation(self.pac_man_6), (x, y))
+                self.window.blit(self.player_rotation(getattr(self, f"pac_man_{player_num}_6"), direction), (x, y))
             elif self.sprite_frame <= 10:
-                self.window.blit(self.player_rotation(self.pac_man_7), (x, y))
+                self.window.blit(self.player_rotation(getattr(self, f"pac_man_{player_num}_7"), direction), (x, y))
             elif self.sprite_frame <= 15:
-                self.window.blit(self.player_rotation(self.pac_man_8), (x, y))
+                self.window.blit(self.player_rotation(getattr(self, f"pac_man_{player_num}_8"), direction), (x, y))
             elif self.sprite_frame <= 20:
-                self.window.blit(self.player_rotation(self.pac_man_9), (x, y))
+                self.window.blit(self.player_rotation(getattr(self, f"pac_man_{player_num}_9"), direction), (x, y))
             elif self.sprite_frame <= 25:
-                self.window.blit(self.player_rotation(self.pac_man_10), (x, y))
+                self.window.blit(self.player_rotation(getattr(self, f"pac_man_{player_num}_10"), direction), (x, y))
             elif self.sprite_frame <= 30:
-                self.window.blit(self.player_rotation(self.pac_man_11), (x, y))
+                self.window.blit(self.player_rotation(getattr(self, f"pac_man_{player_num}_11"), direction), (x, y))
             elif self.sprite_frame <= 35:
-                self.window.blit(self.player_rotation(self.pac_man_12), (x, y))
+                self.window.blit(self.player_rotation(getattr(self, f"pac_man_{player_num}_12"), direction), (x, y))
             elif self.sprite_frame <= 40:
-                self.window.blit(self.player_rotation(self.pac_man_13), (x, y))
+                self.window.blit(self.player_rotation(getattr(self, f"pac_man_{player_num}_13"), direction), (x, y))
             elif self.sprite_frame <= 45:
-                self.window.blit(self.player_rotation(self.pac_man_14), (x, y))
+                self.window.blit(self.player_rotation(getattr(self, f"pac_man_{player_num}_14"), direction), (x, y))
             elif self.sprite_frame <= 50:
-                self.window.blit(self.player_rotation(self.pac_man_15), (x, y))
+                self.window.blit(self.player_rotation(getattr(self, f"pac_man_{player_num}_15"), direction), (x, y))
             elif self.sprite_frame <= 55:
-                self.window.blit(self.player_rotation(self.pac_man_16), (x, y))
+                self.window.blit(self.player_rotation(getattr(self, f"pac_man_{player_num}_16"), direction), (x, y))
             elif self.sprite_frame <= 60:
-                self.window.blit(self.player_rotation(self.pac_man_17), (x, y))
+                self.window.blit(self.player_rotation(getattr(self, f"pac_man_{player_num}_17"), direction), (x, y))
         else:
             # Animação normal
             if self.sprite_frame <= 6:
-                self.window.blit(self.player_rotation(self.pac_man_1), (x, y))
+                self.window.blit(self.player_rotation(getattr(self, f"pac_man_{player_num}_1"), direction), (x, y))
             elif self.sprite_frame <= 12:
-                self.window.blit(self.player_rotation(self.pac_man_1), (x, y))
+                self.window.blit(self.player_rotation(getattr(self, f"pac_man_{player_num}_1"), direction), (x, y))
             elif self.sprite_frame <= 18:
-                self.window.blit(self.player_rotation(self.pac_man_2), (x, y))
+                self.window.blit(self.player_rotation(getattr(self, f"pac_man_{player_num}_2"), direction), (x, y))
             elif self.sprite_frame <= 24:
-                self.window.blit(self.player_rotation(self.pac_man_3), (x, y))
+                self.window.blit(self.player_rotation(getattr(self, f"pac_man_{player_num}_3"), direction), (x, y))
             elif self.sprite_frame <= 30:
-                self.window.blit(self.player_rotation(self.pac_man_4), (x, y))
+                self.window.blit(self.player_rotation(getattr(self, f"pac_man_{player_num}_4"), direction), (x, y))
             elif self.sprite_frame <= 36:
-                self.window.blit(self.player_rotation(self.pac_man_5), (x, y))
+                self.window.blit(self.player_rotation(getattr(self, f"pac_man_{player_num}_5"), direction), (x, y))
             elif self.sprite_frame <= 42:
-                self.window.blit(self.player_rotation(self.pac_man_4), (x, y))
+                self.window.blit(self.player_rotation(getattr(self, f"pac_man_{player_num}_4"), direction), (x, y))
             elif self.sprite_frame <= 48:
-                self.window.blit(self.player_rotation(self.pac_man_3), (x, y))
+                self.window.blit(self.player_rotation(getattr(self, f"pac_man_{player_num}_3"), direction), (x, y))
             elif self.sprite_frame <= 54:
-                self.window.blit(self.player_rotation(self.pac_man_2), (x, y))
+                self.window.blit(self.player_rotation(getattr(self, f"pac_man_{player_num}_2"), direction), (x, y))
             elif self.sprite_frame <= 60:
-                self.window.blit(self.player_rotation(self.pac_man_1), (x, y))
+                self.window.blit(self.player_rotation(getattr(self, f"pac_man_{player_num}_1"), direction), (x, y))
+
+    def player(self):
+        """Desenha e atualiza os Pacmans baseado no modo de jogo"""
+        # Player 1 (sempre ativo)
+        self.pac_man_direction, self.pac_man_next_direction = self.turning_corner(self.pac_man_pos, self.pac_man_direction, self.pac_man_next_direction)
+        self.pac_man_pos = self.collider(self.pac_man_pos, self.pac_man_direction)
+        self.pac_man_pos = self.pacman_tunnel(self.pac_man_pos)
+        self._render_pacman(self.pac_man_pos, self.pac_man_direction, self.end_game, 1)
+        
+        # Player 2 (se modo Player 2 ou Player 3)
+        if self.game_mode in ["Player 2", "Player 3"]:
+            self.pac_man_2_direction, self.pac_man_2_next_direction = self.turning_corner(self.pac_man_2_pos, self.pac_man_2_direction, self.pac_man_2_next_direction)
+            self.pac_man_2_pos = self.collider(self.pac_man_2_pos, self.pac_man_2_direction)
+            self.pac_man_2_pos = self.pacman_tunnel(self.pac_man_2_pos)
+            self._render_pacman(self.pac_man_2_pos, self.pac_man_2_direction, False, 2)
+        
+        # Player 3 (se modo Player 3)
+        if self.game_mode == "Player 3":
+            self.pac_man_3_direction, self.pac_man_3_next_direction = self.turning_corner(self.pac_man_3_pos, self.pac_man_3_direction, self.pac_man_3_next_direction)
+            self.pac_man_3_pos = self.collider(self.pac_man_3_pos, self.pac_man_3_direction)
+            self.pac_man_3_pos = self.pacman_tunnel(self.pac_man_3_pos)
+            self._render_pacman(self.pac_man_3_pos, self.pac_man_3_direction, False, 3)
     
     def distance_ghost_to_pac_man(self, ghost_pos):
         """Calcula distância entre fantasma e Pacman"""
@@ -745,10 +918,10 @@ class PacMan:
                 pacman_top < ghost_bottom and 
                 pacman_bottom > ghost_top)
 
-    def ghost_and_pacman_collider(self):
-        """Verifica colisões entre Pacman e fantasmas usando detecção retangular mais precisa"""
+    def _check_pacman_ghost_collision(self, pacman_pos):
+        """Verifica colisão entre um Pacman específico e todos os fantasmas"""
         # Colisão com fantasma azul
-        if self.check_rectangular_collision(self.pac_man_pos, self.ghost_blue_pos):
+        if self.check_rectangular_collision(pacman_pos, self.ghost_blue_pos):
             if self.harmless_mode_ghost_blue:
                 self.ghost_blue_pos = [self.scale * 12, self.scale * 13]
                 self.harmless_mode_ghost_blue = False
@@ -760,9 +933,10 @@ class PacMan:
                     self.sprite_speed = 1
                     self.lives -= 1
                 self.end_game = True
+            return True
         
         # Colisão com fantasma laranja
-        elif self.check_rectangular_collision(self.pac_man_pos, self.ghost_orange_pos):
+        elif self.check_rectangular_collision(pacman_pos, self.ghost_orange_pos):
             if self.harmless_mode_ghost_orange:
                 self.ghost_orange_pos = [self.scale * 12, self.scale * 14.5]
                 self.harmless_mode_ghost_orange = False
@@ -774,9 +948,10 @@ class PacMan:
                     self.sprite_speed = 1
                     self.lives -= 1
                 self.end_game = True
+            return True
         
         # Colisão com fantasma rosa
-        elif self.check_rectangular_collision(self.pac_man_pos, self.ghost_pink_pos):
+        elif self.check_rectangular_collision(pacman_pos, self.ghost_pink_pos):
             if self.harmless_mode_ghost_pink:
                 self.ghost_pink_pos = [self.scale * 14, self.scale * 13]
                 self.harmless_mode_ghost_pink = False
@@ -788,9 +963,10 @@ class PacMan:
                     self.sprite_speed = 1
                     self.lives -= 1
                 self.end_game = True
+            return True
         
         # Colisão com fantasma vermelho
-        elif self.check_rectangular_collision(self.pac_man_pos, self.ghost_red_pos):
+        elif self.check_rectangular_collision(pacman_pos, self.ghost_red_pos):
             if self.harmless_mode_ghost_red:
                 self.ghost_red_pos = [self.scale * 14, self.scale * 14.5]
                 self.harmless_mode_ghost_red = False
@@ -802,6 +978,25 @@ class PacMan:
                     self.sprite_speed = 1
                     self.lives -= 1
                 self.end_game = True
+            return True
+        
+        return False
+
+    def ghost_and_pacman_collider(self):
+        """Verifica colisões entre todos os Pacmans ativos e fantasmas"""
+        # Player 1 (sempre ativo)
+        if self._check_pacman_ghost_collision(self.pac_man_pos):
+            return
+        
+        # Player 2 (se modo Player 2 ou Player 3)
+        if self.game_mode in ["Player 2", "Player 3"]:
+            if self._check_pacman_ghost_collision(self.pac_man_2_pos):
+                return
+        
+        # Player 3 (se modo Player 3)
+        if self.game_mode == "Player 3":
+            if self._check_pacman_ghost_collision(self.pac_man_3_pos):
+                return
     
     def restart_ghost_collision(self):
         """Reinicia após colisão com fantasma"""
@@ -858,17 +1053,23 @@ class PacMan:
             self.map = [row[:] for row in GAME_MAP]
     
     def scoreboard(self):
-        """Desenha a pontuação e vidas"""
+        """Desenha a pontuação, vidas e modo de jogo"""
         score_text = self.font.render(f'Score: {str(self.score)}', 1, self.white)
         lives_text = self.font.render(f'Lives: {str(max(self.lives, 0))}X', 1, self.white)
+        mode_text = self.font.render(f'Mode: {self.game_mode}', 1, self.white)
+        
         x_score_pos = (self.window.get_width() / 2) - (score_text.get_width() / 2)
         y_score_pos = self.scale * 30.75
         x_lives_pos = (self.window.get_width() / 2) - (lives_text.get_width() / 2)
         y_lives_pos = self.scale * 33
+        x_mode_pos = (self.window.get_width() / 2) - (mode_text.get_width() / 2)
+        y_mode_pos = self.scale * 35.25
+        
         self.window.blit(score_text, (x_score_pos, y_score_pos))
         self.window.blit(lives_text, (x_lives_pos, y_lives_pos))
+        self.window.blit(mode_text, (x_mode_pos, y_mode_pos))
         
-        # Mostrar status do controle
+        # Mostrar status dos controles
         self._draw_controller_status()
         
         if self.lives == -1:
@@ -882,9 +1083,82 @@ class PacMan:
             self.window.blit(game_text, (x_game_pos, y_game_pos))
     
     def _draw_controller_status(self):
-        """Desenha o status dos controles conectados"""
-        # Método vazio - controles funcionam sem feedback visual
-        pass
+        """Desenha o status dos controles e teclas para jogadores ativos"""
+        controller_count = self.controller_manager.get_controller_count()
+        
+        # Mostrar instruções de teclado para jogadores ativos
+        y_offset = self.scale * 37
+        
+        # Player 1 (sempre ativo)
+        player1_text = "P1: WASD"
+        player1_display = self.font.render(player1_text, 1, self.white)
+        player1_x = (self.window.get_width() / 2) - (player1_display.get_width() / 2)
+        self.window.blit(player1_display, (player1_x, y_offset))
+        y_offset += self.scale * 0.8
+        
+        # Player 2 (se modo Player 2 ou Player 3)
+        if self.game_mode in ["Player 2", "Player 3"]:
+            player2_text = "P2: Arrow Keys"
+            player2_display = self.font.render(player2_text, 1, self.white)
+            player2_x = (self.window.get_width() / 2) - (player2_display.get_width() / 2)
+            self.window.blit(player2_display, (player2_x, y_offset))
+            y_offset += self.scale * 0.8
+        
+        # Player 3 (se modo Player 3)
+        if self.game_mode == "Player 3":
+            player3_text = "P3: IJKL"
+            player3_display = self.font.render(player3_text, 1, self.white)
+            player3_x = (self.window.get_width() / 2) - (player3_display.get_width() / 2)
+            self.window.blit(player3_display, (player3_x, y_offset))
+            y_offset += self.scale * 0.8
+        
+        # Mostrar controles USB se conectados
+        if controller_count > 0:
+            controllers_text = f"Controllers: {controller_count}"
+            controller_display = self.font.render(controllers_text, 1, (0, 255, 255))  # Cor ciano para destacar
+            controller_x = (self.window.get_width() / 2) - (controller_display.get_width() / 2)
+            y_offset += self.scale * 0.4  # Espaço extra antes dos controles
+            
+            self.window.blit(controller_display, (controller_x, y_offset))
+            y_offset += self.scale * 0.8
+            
+            # Mostrar mapeamento de controles para jogadores ativos
+            for player_num in [1, 2, 3]:
+                # Verificar se o jogador está ativo no modo atual
+                is_active = False
+                if player_num == 1:
+                    is_active = True
+                elif player_num == 2 and self.game_mode in ["Player 2", "Player 3"]:
+                    is_active = True
+                elif player_num == 3 and self.game_mode == "Player 3":
+                    is_active = True
+                
+                if is_active:
+                    controller_index = self.player_controllers[player_num]
+                    if self.controller_manager.is_controller_connected(controller_index):
+                        controller_name = self.controller_manager.get_controller_name(controller_index)
+                        # Truncar nome se muito longo
+                        if len(controller_name) > 15:
+                            controller_name = controller_name[:12] + "..."
+                        
+                        player_text = f"P{player_num} Controller: {controller_name}"
+                        player_display = self.font.render(player_text, 1, (0, 255, 255))
+                        player_x = (self.window.get_width() / 2) - (player_display.get_width() / 2)
+                        player_y = y_offset
+                        
+                        self.window.blit(player_display, (player_x, player_y))
+                        y_offset += self.scale * 0.8
+    
+    def show_mode_selection(self):
+        """Mostra o menu de seleção de modo"""
+        menu = MenuSelector(self.scale)
+        selected_mode = menu.run_menu_loop(self.window)
+        
+        if selected_mode == 'quit':
+            return False
+        else:
+            self.game_mode = selected_mode
+            return True
     
     def _show_start_countdown(self):
         """Mostra contagem regressiva de 2 segundos antes de iniciar o jogo"""
@@ -913,7 +1187,7 @@ class PacMan:
             time.sleep(1)
         
         # Mostrar "GO!" por 0.5 segundos
-        go_text = countdown_font.render("GO!", 1, self.white)
+        go_text = countdown_font.render("GO", 1, self.white)
         x_pos = (self.window.get_width() / 2) - (go_text.get_width() / 2)
         y_pos = (self.window.get_height() / 2) - (go_text.get_height() / 2)
         
@@ -939,6 +1213,12 @@ class PacMan:
         self.pac_man_pos = [self.scale * 13.1, self.scale * 22.6]
         self.pac_man_direction = [self.scale/16, 0]
         self.pac_man_next_direction = [self.scale/16, 0]
+        self.pac_man_2_pos = [self.scale * 12.1, self.scale * 22.6]
+        self.pac_man_2_direction = [0, 0]
+        self.pac_man_2_next_direction = [0, 0]
+        self.pac_man_3_pos = [self.scale * 14.1, self.scale * 22.6]
+        self.pac_man_3_direction = [0, 0]
+        self.pac_man_3_next_direction = [0, 0]
         self.ghost_blue_pos = [self.scale * 12, self.scale * 13]
         self.ghost_orange_pos = [self.scale * 12, self.scale * 14.5]
         self.ghost_pink_pos = [self.scale * 14, self.scale * 13]
@@ -956,9 +1236,14 @@ class PacMan:
         self.distance_ghost_pink_to_pac_man = self.distance_ghost_to_pac_man(self.ghost_pink_pos)
         self.distance_ghost_red_to_pac_man = self.distance_ghost_to_pac_man(self.ghost_red_pos)
         self.map = [row[:] for row in GAME_MAP]
+        self.game_mode = "Player 1"  # Reset para modo padrão
     
     def run(self):
         """Loop principal do jogo"""
+        # Mostrar menu de seleção de modo
+        if not self.show_mode_selection():
+            return
+        
         # Pausa inicial de 2 segundos com contagem regressiva
         self._show_start_countdown()
         

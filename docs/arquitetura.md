@@ -17,6 +17,12 @@ O jogo utiliza uma arquitetura orientada a objetos com separação clara de resp
                        │ constants.py    │
                        │ (Configuration) │
                        └─────────────────┘
+                                ▲
+                                │
+                       ┌─────────────────┐
+                       │ menu.py         │
+                       │ (Menu System)   │
+                       └─────────────────┘
 ```
 
 ## Componentes Principais
@@ -35,6 +41,8 @@ O jogo utiliza uma arquitetura orientada a objetos com separação clara de resp
 class PacMan:
     def __init__(self, scale)           # Inicialização
     def run(self)                       # Loop principal
+    def show_mode_selection(self)       # Menu de seleção
+    def _show_start_countdown(self)     # Contagem regressiva
     def move(self, key)                 # Processamento de input
     def handle_controller_input(self)   # Input de controles
     def player(self)                    # Lógica do jogador
@@ -72,7 +80,31 @@ class ControllerButton(Enum):           # Botões mapeados
 - **Strategy Pattern**: Diferentes estratégias para diferentes controles
 - **Singleton Pattern**: Gerenciador único de controles
 
-### 3. Sistema de Constantes (`src/constants.py`)
+### 3. Sistema de Menu (`src/menu.py`)
+
+**Responsabilidades:**
+- Gerenciamento do menu de seleção
+- Navegação entre opções
+- Renderização da interface do menu
+- Controle de fluxo de seleção
+
+**Classes Principais:**
+```python
+class MenuSelector:
+    def __init__(self, scale)           # Inicialização do menu
+    def handle_input(self, key)         # Processamento de input
+    def draw(self, window)              # Renderização do menu
+    def get_selected_mode(self)         # Obter modo selecionado
+    def reset(self)                     # Reset do menu
+    def run_menu_loop(self, window)     # Loop principal do menu
+```
+
+**Padrões Utilizados:**
+- **State Pattern**: Diferentes estados de seleção
+- **Template Method**: Estrutura comum para renderização
+- **Observer Pattern**: Notificação de mudanças de seleção
+
+### 4. Sistema de Constantes (`src/constants.py`)
 
 **Responsabilidades:**
 - Configurações centralizadas
@@ -104,14 +136,21 @@ GAME_MAP = [...]
 main.py → PacMan.__init__() → ControllerManager.__init__()
 ```
 
-### 2. Loop Principal
+### 2. Menu e Seleção
+```
+run() → show_mode_selection() → MenuSelector.run_menu_loop()
+     → handle_input() → get_selected_mode()
+     → _show_start_countdown()
+```
+
+### 3. Loop Principal
 ```
 run() → event.get() → move() → _set_direction()
      → handle_controller_input() → get_movement_input()
      → update_physics() → render() → display.update()
 ```
 
-### 3. Sistema de Input
+### 4. Sistema de Input
 ```
 Teclado: event.key → move() → _set_direction()
 Controle: get_movement_input() → _set_direction()
@@ -162,6 +201,23 @@ button_mappings = {
 }
 ```
 
+### 5. Sistema de Menu
+**Decisão**: Menu separado e independente do jogo principal
+**Justificativa**: Separação de responsabilidades e reutilização
+
+```python
+# Menu como componente independente
+class MenuSelector:
+    def run_menu_loop(self, window):
+        # Loop próprio do menu
+        # Retorna seleção ou 'quit'
+```
+
+**Características:**
+- **Modular**: Pode ser reutilizado em outros jogos
+- **Responsivo**: Atualiza em tempo real
+- **Extensível**: Fácil adição de novas opções
+
 ## Padrões de Performance
 
 ### 1. Otimização de Renderização
@@ -193,7 +249,18 @@ class ControllerType(Enum):
 button_mappings[ControllerType.PLAYSTATION] = {...}
 ```
 
-### 2. Adicionando Novos Tipos de Entidade
+### 2. Adicionando Novas Opções de Menu
+```python
+# Em menu.py
+class MenuSelector:
+    def __init__(self, scale):
+        self.modes = ["Player 1", "Player 2", "Player 3", "Multiplayer"]  # Nova opção
+        
+    def handle_input(self, key):
+        # Lógica existente funciona automaticamente
+```
+
+### 3. Adicionando Novos Tipos de Entidade
 ```python
 # Em game.py
 def new_entity(self):
@@ -203,7 +270,7 @@ def new_entity(self):
     # Implementar lógica específica
 ```
 
-### 3. Modificando o Mapa
+### 4. Modificando o Mapa
 ```python
 # Em constants.py
 GAME_MAP = [
@@ -220,6 +287,7 @@ GAME_MAP = [
 tests/
 ├── test_game.py          # Testes da lógica principal
 ├── test_controller.py    # Testes do sistema de controles
+├── test_menu.py          # Testes do sistema de menu
 ├── test_collision.py     # Testes de colisão
 └── test_physics.py       # Testes de física
 ```

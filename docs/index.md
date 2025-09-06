@@ -30,6 +30,9 @@ Bem-vindo à documentação completa do jogo Pac-Man! Esta documentação fornec
 
 ### ✅ Implementado
 - ✅ Jogo Pac-Man completo
+- ✅ Sistema de menu e seleção de modo
+- ✅ Suporte a múltiplos jogadores (Player 1, 2, 3)
+- ✅ Contagem regressiva antes do início
 - ✅ Suporte a controles Xbox e genéricos
 - ✅ Detecção automática de controles
 - ✅ Feedback visual de controles
@@ -41,9 +44,10 @@ Bem-vindo à documentação completa do jogo Pac-Man! Esta documentação fornec
 ### 🔮 Futuras Melhorias
 - 🔮 Sistema de som
 - 🔮 Múltiplos níveis
-- 🔮 Modo multiplayer
+- 🔮 Modo multiplayer real (múltiplos jogadores simultâneos)
 - 🔮 Configurações personalizáveis
 - 🔮 Recordes e rankings
+- 🔮 Mais opções de menu
 
 ## 🛠️ Tecnologias Utilizadas
 
@@ -93,6 +97,8 @@ Bem-vindo à documentação completa do jogo Pac-Man! Esta documentação fornec
 - 📚 **Documentação**: Melhorar documentação
 - 🎨 **Sprites**: Criar novos sprites
 - 🔧 **Controles**: Melhorar suporte a controles
+- 🎯 **Menu**: Adicionar novas opções de menu
+- 🎵 **Som**: Implementar sistema de áudio
 
 ## 📄 Licença
 
@@ -107,5 +113,5 @@ Este projeto está sob a licença MIT. Veja o arquivo LICENSE para detalhes.
 ---
 
 **Última atualização**: 2024  
-**Versão da documentação**: 1.0  
+**Versão da documentação**: 1.2  
 **Compatibilidade**: Python 3.7+, pygame-ce 2.4.0+

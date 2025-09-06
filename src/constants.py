@@ -14,6 +14,11 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 BLUE = (25, 25, 255)
 
+# Cores dos players
+PLAYER_1_COLOR = (255, 255, 0)  # Amarelo (cor original)
+PLAYER_2_COLOR = (0, 255, 0)    # Verde
+PLAYER_3_COLOR = (255, 192, 203)  # Rosa
+
 # Configurações de animação
 SPRITE_SPEED = 2
 HARMLESS_MODE_DURATION = 16  # frames
