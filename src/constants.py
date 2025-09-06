@@ -90,5 +90,5 @@ POWER_PELLET_POINTS = 5
 GHOST_POINTS = 10
 
 # Configurações de colisão
-COLLISION_DISTANCE = SCALE * 1.1
+COLLISION_DISTANCE = SCALE * 0.8  # Reduzido para colisão mais precisa
 HUNT_DISTANCE = SCALE * 10

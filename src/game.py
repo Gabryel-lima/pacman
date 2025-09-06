@@ -717,10 +717,38 @@ class PacMan:
             elif self.ghost_red_pos == [self.scale * 14, self.scale * 14.5]:
                 self.moving_ghost_into_the_game('red')
     
+    def check_rectangular_collision(self, pacman_pos, ghost_pos):
+        """Verifica colisão retangular mais precisa entre Pacman e fantasma"""
+        # Área de colisão reduzida para maior precisão
+        collision_margin = self.scale * 0.4  # Margem menor para colisão mais precisa
+        
+        # Posições centrais dos sprites
+        pacman_center_x = pacman_pos[0] + (self.scale * 0.65)
+        pacman_center_y = pacman_pos[1] + (self.scale * 0.65)
+        ghost_center_x = ghost_pos[0] + (self.scale * 0.65)
+        ghost_center_y = ghost_pos[1] + (self.scale * 0.65)
+        
+        # Verificar se as áreas de colisão se sobrepõem
+        pacman_left = pacman_center_x - collision_margin
+        pacman_right = pacman_center_x + collision_margin
+        pacman_top = pacman_center_y - collision_margin
+        pacman_bottom = pacman_center_y + collision_margin
+        
+        ghost_left = ghost_center_x - collision_margin
+        ghost_right = ghost_center_x + collision_margin
+        ghost_top = ghost_center_y - collision_margin
+        ghost_bottom = ghost_center_y + collision_margin
+        
+        # Verificar sobreposição retangular
+        return (pacman_left < ghost_right and 
+                pacman_right > ghost_left and 
+                pacman_top < ghost_bottom and 
+                pacman_bottom > ghost_top)
+
     def ghost_and_pacman_collider(self):
-        """Verifica colisões entre Pacman e fantasmas"""
+        """Verifica colisões entre Pacman e fantasmas usando detecção retangular mais precisa"""
         # Colisão com fantasma azul
-        if self.distance_ghost_blue_to_pac_man <= COLLISION_DISTANCE:
+        if self.check_rectangular_collision(self.pac_man_pos, self.ghost_blue_pos):
             if self.harmless_mode_ghost_blue:
                 self.ghost_blue_pos = [self.scale * 12, self.scale * 13]
                 self.harmless_mode_ghost_blue = False
@@ -734,7 +762,7 @@ class PacMan:
                 self.end_game = True
         
         # Colisão com fantasma laranja
-        elif self.distance_ghost_orange_to_pac_man <= COLLISION_DISTANCE:
+        elif self.check_rectangular_collision(self.pac_man_pos, self.ghost_orange_pos):
             if self.harmless_mode_ghost_orange:
                 self.ghost_orange_pos = [self.scale * 12, self.scale * 14.5]
                 self.harmless_mode_ghost_orange = False
@@ -748,7 +776,7 @@ class PacMan:
                 self.end_game = True
         
         # Colisão com fantasma rosa
-        elif self.distance_ghost_pink_to_pac_man <= COLLISION_DISTANCE:
+        elif self.check_rectangular_collision(self.pac_man_pos, self.ghost_pink_pos):
             if self.harmless_mode_ghost_pink:
                 self.ghost_pink_pos = [self.scale * 14, self.scale * 13]
                 self.harmless_mode_ghost_pink = False
@@ -762,7 +790,7 @@ class PacMan:
                 self.end_game = True
         
         # Colisão com fantasma vermelho
-        elif self.distance_ghost_red_to_pac_man <= COLLISION_DISTANCE:
+        elif self.check_rectangular_collision(self.pac_man_pos, self.ghost_red_pos):
             if self.harmless_mode_ghost_red:
                 self.ghost_red_pos = [self.scale * 14, self.scale * 14.5]
                 self.harmless_mode_ghost_red = False
