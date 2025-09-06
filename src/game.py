@@ -42,7 +42,7 @@ class PacMan:
         
         # Estado do jogo
         self.score = 0
-        self.lives = 5
+        self.lives = 2 # 3 vidas
         self.end_game = False
         self.harmless_mode = False
         self.harmless_mode_timer = 0
