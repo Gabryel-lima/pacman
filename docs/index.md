@@ -1,17 +1,18 @@
-# Índice da Documentação - Pac-Man
+# 📚 Índice da Documentação - Pac-Man
 
 Bem-vindo à documentação completa do jogo Pac-Man! Esta documentação fornece todas as informações necessárias para jogar, instalar, configurar e desenvolver o jogo.
 
-## 📚 Documentação Disponível
+## 🚀 Início Rápido
 
-### 🎮 Para Jogadores
-- **[README Principal](README.md)** - Visão geral e início rápido
-- **[Guia de Controles](controles.md)** - Como usar controles Xbox e genéricos
-- **[Guia de Instalação](instalacao.md)** - Instalação detalhada em diferentes sistemas
+### Para Jogadores
+- **[🚀 Guia de Início Rápido](quick-start.md)** - Comece a jogar em 5 minutos
+- **[🎮 Guia de Controles](controles.md)** - Controles Xbox/PlayStation/genéricos
+- **[📦 Guia de Build](build.md)** - Criar executáveis para Windows/Linux
 
-### 🔧 Para Desenvolvedores
-- **[Arquitetura](arquitetura.md)** - Documentação técnica e design patterns
-- **[README Principal](README.md)** - Estrutura do projeto e tecnologias
+### Para Desenvolvedores
+- **[⚙️ Instalação Detalhada](instalacao.md)** - Instalação passo a passo
+- **[🏗️ Arquitetura](arquitetura.md)** - Documentação técnica
+- **[📋 README Principal](../README.md)** - Visão geral do projeto
 
 ## 🚀 Início Rápido
 
