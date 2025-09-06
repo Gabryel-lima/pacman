@@ -241,8 +241,8 @@ class PacMan:
             for x in range(len(self.map[0])):
                 if self.map[y][x] == WALL:
                     pg.draw.rect(self.window, self.blue, (x * self.scale, y * self.scale, self.scale, self.scale))
-                if self.map[y][x] == TUNNEL:
-                    pg.draw.rect(self.window, self.white, (x * self.scale, y * self.scale, self.scale, self.scale))
+                #if self.map[y][x] == TUNNEL:
+                #    pg.draw.rect(self.window, self.white, (x * self.scale, y * self.scale, self.scale, self.scale))
                 if self.map[y][x] == EMPTY or self.map[y][x] == DOT or self.map[y][x] == POWER_PELLET:
                     pg.draw.rect(self.window, self.black, ((x * self.scale) - (self.scale / 2), (y * self.scale) - (self.scale / 2), self.scale * 1.5, self.scale * 1.5))
         
