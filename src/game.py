@@ -858,6 +858,43 @@ class PacMan:
         # Método vazio - controles funcionam sem feedback visual
         pass
     
+    def _show_start_countdown(self):
+        """Mostra contagem regressiva de 2 segundos antes de iniciar o jogo"""
+        import time
+        
+        # Criar fonte maior para a contagem regressiva
+        countdown_font = pg.font.SysFont("Courier New", self.scale * 4, bold=True)
+        
+        for i in range(3, 0, -1):
+            # Limpar a tela
+            self.clear_window()
+            
+            # Desenhar o tabuleiro
+            self.board()
+            
+            # Desenhar texto da contagem regressiva
+            countdown_text = countdown_font.render(str(i), 1, self.white)
+            x_pos = (self.window.get_width() / 2) - (countdown_text.get_width() / 2)
+            y_pos = (self.window.get_height() / 2) - (countdown_text.get_height() / 2)
+            self.window.blit(countdown_text, (x_pos, y_pos))
+            
+            # Atualizar a tela
+            pg.display.update()
+            
+            # Pausar por 1 segundo
+            time.sleep(1)
+        
+        # Mostrar "GO!" por 0.5 segundos
+        go_text = countdown_font.render("GO!", 1, self.white)
+        x_pos = (self.window.get_width() / 2) - (go_text.get_width() / 2)
+        y_pos = (self.window.get_height() / 2) - (go_text.get_height() / 2)
+        
+        self.clear_window()
+        self.board()
+        self.window.blit(go_text, (x_pos, y_pos))
+        pg.display.update()
+        time.sleep(0.5)
+    
     def restart(self):
         """Reinicia o jogo"""
         self.sprite_frame = 0
@@ -894,6 +931,9 @@ class PacMan:
     
     def run(self):
         """Loop principal do jogo"""
+        # Pausa inicial de 2 segundos com contagem regressiva
+        self._show_start_countdown()
+        
         running = True
         while running:
             for event in pg.event.get():
