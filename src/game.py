@@ -6,9 +6,289 @@ Baseada na lógica do arquivo Pac_Man.py
 import pygame as pg
 import random
 import os
+import math
+from collections import deque
 from .constants import *
 from .controller import ControllerManager, ControllerType
 from .menu import MenuSelector
+
+
+class ImprovedGhostAI:
+    """Classe com melhorias para a AI dos fantasmas"""
+    
+    def __init__(self, game_instance):
+        self.game = game_instance
+        self.ghost_states = {
+            'blue': {'mode': 'scatter', 'mode_timer': 0, 'target': None},
+            'orange': {'mode': 'chase', 'mode_timer': 60, 'target': None},
+            'pink': {'mode': 'ambush', 'mode_timer': 120, 'target': None},
+            'red': {'mode': 'aggressive', 'mode_timer': 180, 'target': None}
+        }
+        # Contadores para mudança de comportamento
+        self.behavior_cycle_timer = 0
+        
+        # Pontos de scatter (cantos do mapa) para cada fantasma
+        self.scatter_targets = {
+            'blue': [self.game.scale * 2, self.game.scale * 2],           # Canto superior esquerdo
+            'orange': [self.game.scale * 25, self.game.scale * 30],       # Canto inferior direito
+            'pink': [self.game.scale * 2, self.game.scale * 30],          # Canto inferior esquerdo
+            'red': [self.game.scale * 25, self.game.scale * 2]            # Canto superior direito
+        }
+
+    def get_manhattan_distance(self, pos1, pos2):
+        """Calcula distância Manhattan entre duas posições"""
+        return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
+
+    def get_euclidean_distance(self, pos1, pos2):
+        """Calcula distância euclidiana entre duas posições"""
+        dx = pos1[0] - pos2[0]
+        dy = pos1[1] - pos2[1]
+        return math.sqrt(dx * dx + dy * dy)
+
+    def find_path_bfs(self, start_pos, target_pos):
+        """Encontra caminho usando BFS (Breadth-First Search)"""
+        # Converter posições para coordenadas do grid
+        start_grid = [int(start_pos[0] / self.game.scale), int(start_pos[1] / self.game.scale)]
+        target_grid = [int(target_pos[0] / self.game.scale), int(target_pos[1] / self.game.scale)]
+        
+        # Verificar limites
+        map_height = len(self.game.map)
+        map_width = len(self.game.map[0]) if map_height > 0 else 0
+        
+        if (start_grid[0] < 0 or start_grid[0] >= map_width or 
+            start_grid[1] < 0 or start_grid[1] >= map_height or
+            target_grid[0] < 0 or target_grid[0] >= map_width or 
+            target_grid[1] < 0 or target_grid[1] >= map_height):
+            return None
+
+        queue = deque([(start_grid, [start_grid])])
+        visited = set()
+        visited.add(tuple(start_grid))
+
+        directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]  # baixo, direita, cima, esquerda
+        
+        max_iterations = 100  # Limitar iterações para evitar lag
+        iterations = 0
+
+        while queue and iterations < max_iterations:
+            iterations += 1
+            current_pos, path = queue.popleft()
+            
+            if current_pos == target_grid:
+                if len(path) > 1:
+                    next_pos = path[1]
+                    # Converter de volta para coordenadas do jogo
+                    direction = [
+                        (next_pos[0] - start_grid[0]) * self.game.scale/16,
+                        (next_pos[1] - start_grid[1]) * self.game.scale/16
+                    ]
+                    return direction
+                return None
+
+            for dx, dy in directions:
+                new_x, new_y = current_pos[0] + dx, current_pos[1] + dy
+                new_pos = [new_x, new_y]
+                
+                if (0 <= new_x < map_width and 0 <= new_y < map_height and 
+                    tuple(new_pos) not in visited):
+                    
+                    # Verificar se não é parede
+                    if (self.game.map[new_y][new_x] != '#'):  # '#' = parede
+                        visited.add(tuple(new_pos))
+                        queue.append((new_pos, path + [new_pos]))
+
+        return None
+
+    def get_predicted_pacman_position(self, steps_ahead=4):
+        """Prediz posição futura do Pacman baseada na direção atual"""
+        predicted_pos = [
+            self.game.pac_man_pos[0] + (self.game.pac_man_direction[0] * steps_ahead),
+            self.game.pac_man_pos[1] + (self.game.pac_man_direction[1] * steps_ahead)
+        ]
+        return predicted_pos
+
+    def get_ambush_target(self, ghost_color):
+        """Calcula posição para emboscada (4 tiles à frente do Pacman)"""
+        if ghost_color == 'pink':
+            # Rosa tenta interceptar o Pacman
+            return self.get_predicted_pacman_position(4)
+        elif ghost_color == 'orange':
+            # Laranja mantém distância - se muito perto, vai para scatter
+            distance = self.get_euclidean_distance(
+                getattr(self.game, f'ghost_{ghost_color}_pos'),
+                self.game.pac_man_pos
+            )
+            if distance < self.game.scale * 8:
+                return self.scatter_targets[ghost_color]
+            else:
+                return self.game.pac_man_pos
+        return self.game.pac_man_pos
+
+    def get_best_direction_a_star(self, ghost_pos, target_pos, current_direction):
+        """Usa A* simplificado para encontrar melhor direção"""
+        possible_directions = [
+            [self.game.scale/16, 0],   # direita
+            [-self.game.scale/16, 0],  # esquerda
+            [0, self.game.scale/16],   # baixo
+            [0, -self.game.scale/16]   # cima
+        ]
+        
+        best_direction = current_direction
+        best_score = float('inf')
+        
+        for direction in possible_directions:
+            # Evitar reversão (não voltar na direção oposta)
+            if (direction[0] == -current_direction[0] and direction[1] == -current_direction[1] and
+                current_direction != [0, 0]):
+                continue
+            
+            # Testar nova posição
+            test_pos = [ghost_pos[0] + direction[0] * 16, ghost_pos[1] + direction[1] * 16]
+            
+            # Verificar colisão com paredes
+            collision = self.would_collide_with_wall(test_pos, direction)
+            if collision:
+                continue
+            
+            # Calcular score: distância ao target + heurística
+            distance = self.get_manhattan_distance(test_pos, target_pos)
+            
+            # Adicionar penalidade por mudança de direção
+            direction_change_penalty = 0
+            if direction != current_direction:
+                direction_change_penalty = 10
+            
+            total_score = distance + direction_change_penalty
+            
+            if total_score < best_score:
+                best_score = total_score
+                best_direction = direction
+        
+        return best_direction
+
+    def would_collide_with_wall(self, position, direction):
+        """Verifica se uma posição causaria colisão com parede"""
+        test_pos = [position[0], position[1]]
+        test_pos[0] += direction[0]
+        test_pos[1] += direction[1]
+        
+        for y in range(len(self.game.map)):
+            for x in range(len(self.game.map[0])):
+                if self.game.map[y][x] == '#':  # '#' = parede
+                    x_wall = (x * self.game.scale) - (self.game.scale * 0.65)
+                    y_wall = (y * self.game.scale) - (self.game.scale * 0.65)
+                    wall_size = self.game.scale * 1.85
+                    x_agent = test_pos[0] + (self.game.scale * 0.65)
+                    y_agent = test_pos[1] + (self.game.scale * 0.65)
+                    
+                    if (x_agent >= x_wall and x_agent <= x_wall + wall_size and 
+                        y_agent >= y_wall and y_agent <= y_wall + wall_size):
+                        return True
+        return False
+
+    def update_ghost_behavior(self, ghost_color):
+        """Atualiza o comportamento do fantasma baseado em ciclos"""
+        state = self.ghost_states[ghost_color]
+        state['mode_timer'] += 1
+        
+        # Ciclo de comportamentos: scatter -> chase -> scatter -> chase...
+        cycle_time = 480  # 8 segundos a 60 FPS
+        
+        if state['mode_timer'] % cycle_time < cycle_time // 4:
+            state['mode'] = 'scatter'
+        elif state['mode_timer'] % cycle_time < cycle_time // 2:
+            state['mode'] = 'chase'
+        elif state['mode_timer'] % cycle_time < 3 * cycle_time // 4:
+            state['mode'] = 'scatter'
+        else:
+            state['mode'] = 'chase'
+
+    def get_ghost_target(self, ghost_color):
+        """Determina o target do fantasma baseado no comportamento atual"""
+        state = self.ghost_states[ghost_color]
+        
+        if self.game.harmless_mode and getattr(self.game, f'harmless_mode_ghost_{ghost_color}'):
+            # Modo inofensivo - fugir do Pacman
+            return self.scatter_targets[ghost_color]
+        
+        if state['mode'] == 'scatter':
+            return self.scatter_targets[ghost_color]
+        elif state['mode'] == 'chase':
+            return self.game.pac_man_pos
+        elif state['mode'] == 'ambush':
+            return self.get_ambush_target(ghost_color)
+        elif state['mode'] == 'aggressive':
+            # Comportamento mais agressivo - perseguição direta
+            return self.game.pac_man_pos
+        
+        return self.game.pac_man_pos
+
+    def improved_ghost_intelligence(self, ghost_color, ghost_pos, ghost_direction, ghost_next_direction, distance_to_pacman):
+        """IA melhorada para fantasmas individuais"""
+        # Atualizar comportamento
+        self.update_ghost_behavior(ghost_color)
+        
+        # Determinar target
+        target = self.get_ghost_target(ghost_color)
+        
+        # Usar A* simplificado para encontrar melhor direção
+        new_direction = self.get_best_direction_a_star(ghost_pos, target, ghost_direction)
+        
+        # Aplicar lógica de turning corner melhorada
+        if new_direction != ghost_direction:
+            # Verificar se pode virar
+            can_turn = not self.would_collide_with_wall(ghost_pos, new_direction)
+            if can_turn:
+                ghost_direction = new_direction
+                ghost_next_direction = new_direction
+        
+        # Movimento e colisão
+        ghost_pos = self.game.collider(ghost_pos, ghost_direction)
+        ghost_pos = self.game.pacman_tunnel(ghost_pos)
+        
+        # Recalcular distância
+        distance_to_pacman = self.game.distance_ghost_to_pac_man(ghost_pos)
+        
+        # Detecção de fantasma preso (mesmo que o original)
+        if not hasattr(self, 'previous_positions'):
+            self.previous_positions = {}
+        
+        if ghost_color not in self.previous_positions:
+            self.previous_positions[ghost_color] = []
+        
+        self.previous_positions[ghost_color].append(ghost_pos[:])
+        
+        # Manter apenas últimas 30 posições
+        if len(self.previous_positions[ghost_color]) > 30:
+            self.previous_positions[ghost_color].pop(0)
+        
+        # Verificar se está preso (mesma posição por muito tempo)
+        if len(self.previous_positions[ghost_color]) >= 20:
+            recent_positions = self.previous_positions[ghost_color][-20:]
+            unique_positions = len(set(tuple(pos) for pos in recent_positions))
+            
+            if unique_positions < 3:  # Poucas posições únicas = preso
+                # Forçar nova direção aleatória
+                ghost_direction = self.game.random_direction_for_ghost()
+                ghost_next_direction = ghost_direction
+        
+        return ghost_pos, ghost_direction, ghost_next_direction, distance_to_pacman
+
+    def get_cooperative_behavior(self, ghost_color, all_ghost_positions):
+        """Implementa comportamento cooperativo entre fantasmas"""
+        # Evitar que fantasmas se agrupem demais
+        min_distance = self.game.scale * 3
+        
+        current_pos = getattr(self.game, f'ghost_{ghost_color}_pos')
+        
+        for other_color, other_pos in all_ghost_positions.items():
+            if other_color != ghost_color:
+                distance = self.get_euclidean_distance(current_pos, other_pos)
+                if distance < min_distance:
+                    # Muito próximo de outro fantasma, tentar se afastar
+                    return self.scatter_targets[ghost_color]
+        
+        return None  # Comportamento normal
 
 
 class PacMan:
@@ -748,6 +1028,18 @@ class PacMan:
         
         return new_position, new_direction
     
+    def enhanced_ghost_intelligence(self, ghost_pos, ghost_direction, ghost_next_direction, distance_ghost_to_pac_man, harmless_ghost_mode, ghost_color='blue'):
+        """
+        Versão melhorada da ghost_intelligence que usa a IA aprimorada
+        """
+        if not hasattr(self, 'ghost_ai'):
+            self.ghost_ai = ImprovedGhostAI(self)
+        
+        # Usar a IA melhorada
+        return self.ghost_ai.improved_ghost_intelligence(
+            ghost_color, ghost_pos, ghost_direction, ghost_next_direction, distance_ghost_to_pac_man
+        )
+
     def ghost_intelligence(self, ghost_pos, ghost_direction, ghost_next_direction, distance_ghost_to_pac_man, harmless_ghost_mode):
         """IA do fantasma - decide movimento baseado na distância e modo"""
         ghost_blue_pos = [0, 0]
@@ -773,15 +1065,22 @@ class PacMan:
         return ghost_pos, ghost_direction, ghost_next_direction, distance_ghost_to_pac_man
     
     def ghost(self):
-        """Atualiza e move todos os fantasmas"""
+        """Atualiza e move todos os fantasmas com IA melhorada"""
+        # Coletar posições de todos os fantasmas para comportamento cooperativo
+        all_ghost_positions = {
+            'blue': self.ghost_blue_pos,
+            'orange': self.ghost_orange_pos,
+            'pink': self.ghost_pink_pos,
+            'red': self.ghost_red_pos
+        }
+        
         # Fantasma azul
         if self.ghost_blue_pos != [self.scale * 12, self.scale * 13]:
-            input_1 = self.ghost_blue_pos
-            input_2 = self.ghost_blue_direction
-            input_3 = self.ghost_blue_next_direction
-            input_4 = self.distance_ghost_blue_to_pac_man
-            input_5 = self.harmless_mode_ghost_blue
-            output_1, output_2, output_3, output_4 = self.ghost_intelligence(input_1, input_2, input_3, input_4, input_5)
+            output_1, output_2, output_3, output_4 = self.enhanced_ghost_intelligence(
+                self.ghost_blue_pos, self.ghost_blue_direction, 
+                self.ghost_blue_next_direction, self.distance_ghost_blue_to_pac_man, 
+                self.harmless_mode_ghost_blue, 'blue'
+            )
             self.ghost_blue_pos = output_1
             self.ghost_blue_direction = output_2
             self.ghost_blue_next_direction = output_3
@@ -789,12 +1088,11 @@ class PacMan:
         
         # Fantasma laranja
         if self.ghost_orange_pos != [self.scale * 12, self.scale * 14.5]:
-            input_1 = self.ghost_orange_pos
-            input_2 = self.ghost_orange_direction
-            input_3 = self.ghost_orange_next_direction
-            input_4 = self.distance_ghost_orange_to_pac_man
-            input_5 = self.harmless_mode_ghost_orange
-            output_1, output_2, output_3, output_4 = self.ghost_intelligence(input_1, input_2, input_3, input_4, input_5)
+            output_1, output_2, output_3, output_4 = self.enhanced_ghost_intelligence(
+                self.ghost_orange_pos, self.ghost_orange_direction, 
+                self.ghost_orange_next_direction, self.distance_ghost_orange_to_pac_man, 
+                self.harmless_mode_ghost_orange, 'orange'
+            )
             self.ghost_orange_pos = output_1
             self.ghost_orange_direction = output_2
             self.ghost_orange_next_direction = output_3
@@ -802,12 +1100,11 @@ class PacMan:
         
         # Fantasma rosa
         if self.ghost_pink_pos != [self.scale * 14, self.scale * 13]:
-            input_1 = self.ghost_pink_pos
-            input_2 = self.ghost_pink_direction
-            input_3 = self.ghost_pink_next_direction
-            input_4 = self.distance_ghost_pink_to_pac_man
-            input_5 = self.harmless_mode_ghost_pink
-            output_1, output_2, output_3, output_4 = self.ghost_intelligence(input_1, input_2, input_3, input_4, input_5)
+            output_1, output_2, output_3, output_4 = self.enhanced_ghost_intelligence(
+                self.ghost_pink_pos, self.ghost_pink_direction, 
+                self.ghost_pink_next_direction, self.distance_ghost_pink_to_pac_man, 
+                self.harmless_mode_ghost_pink, 'pink'
+            )
             self.ghost_pink_pos = output_1
             self.ghost_pink_direction = output_2
             self.ghost_pink_next_direction = output_3
@@ -815,12 +1112,11 @@ class PacMan:
         
         # Fantasma vermelho
         if self.ghost_red_pos != [self.scale * 14, self.scale * 14.5]:
-            input_1 = self.ghost_red_pos
-            input_2 = self.ghost_red_direction
-            input_3 = self.ghost_red_next_direction
-            input_4 = self.distance_ghost_red_to_pac_man
-            input_5 = self.harmless_mode_ghost_red
-            output_1, output_2, output_3, output_4 = self.ghost_intelligence(input_1, input_2, input_3, input_4, input_5)
+            output_1, output_2, output_3, output_4 = self.enhanced_ghost_intelligence(
+                self.ghost_red_pos, self.ghost_red_direction, 
+                self.ghost_red_next_direction, self.distance_ghost_red_to_pac_man, 
+                self.harmless_mode_ghost_red, 'red'
+            )
             self.ghost_red_pos = output_1
             self.ghost_red_direction = output_2
             self.ghost_red_next_direction = output_3

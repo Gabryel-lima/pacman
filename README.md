@@ -14,6 +14,8 @@ Uma implementação moderna do clássico jogo Pac-Man em Python usando pygame-ce
 - 🔧 **Detecção automática de controles** conectados
 - 📱 **Feedback visual** de status dos controles
 - ⏱️ **Contagem regressiva** antes do início do jogo
+- 🧠 **IA avançada dos fantasmas** com pathfinding inteligente
+- 🎭 **Comportamentos distintos** para cada fantasma
 - 🏗️ **Código orientado a objetos** bem estruturado
 - 🎨 **Interface gráfica moderna** com pygame-ce
 
@@ -101,6 +103,18 @@ pacman/
 ```
 
 ## ✨ Funcionalidades
+
+### 🧠 Sistema de IA Avançado dos Fantasmas
+- **Pathfinding inteligente** com algoritmos BFS e A*
+- **Comportamentos distintos** para cada fantasma:
+  - 🔵 **Azul**: Modo scatter (vai para cantos)
+  - 🟠 **Laranja**: Modo chase com distância inteligente
+  - 🩷 **Rosa**: Modo ambush (intercepta o Pacman)
+  - 🔴 **Vermelho**: Modo aggressive (perseguição direta)
+- **Predição de movimento** do Pacman
+- **Sistema anti-travamento** para evitar fantasmas presos
+- **Comportamento cooperativo** entre fantasmas
+- **Ciclos dinâmicos** de comportamento (scatter ↔ chase)
 
 ### 🎮 Sistema de Controles Avançado
 - **Detecção automática** de controles Xbox/PlayStation/genéricos

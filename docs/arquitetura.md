@@ -23,6 +23,12 @@ O jogo utiliza uma arquitetura orientada a objetos com separação clara de resp
                        │ menu.py         │
                        │ (Menu System)   │
                        └─────────────────┘
+                                ▲
+                                │
+                       ┌─────────────────┐
+                       │ ImprovedGhostAI │
+                       │ (Advanced AI)   │
+                       └─────────────────┘
 ```
 
 ## Componentes Principais
@@ -46,7 +52,8 @@ class PacMan:
     def move(self, key)                 # Processamento de input
     def handle_controller_input(self)   # Input de controles
     def player(self)                    # Lógica do jogador
-    def ghost(self)                     # Lógica dos fantasmas
+    def ghost(self)                     # Lógica dos fantasmas (IA melhorada)
+    def enhanced_ghost_intelligence()   # IA avançada dos fantasmas
     def collider(self, position, direction)  # Sistema de colisão
 ```
 
@@ -104,7 +111,43 @@ class MenuSelector:
 - **Template Method**: Estrutura comum para renderização
 - **Observer Pattern**: Notificação de mudanças de seleção
 
-### 4. Sistema de Constantes (`src/constants.py`)
+### 4. Sistema de IA Avançado (`src/game.py` - Classe ImprovedGhostAI)
+
+**Responsabilidades:**
+- Pathfinding inteligente para fantasmas
+- Comportamentos distintos por fantasma
+- Sistema anti-travamento
+- Comportamento cooperativo entre fantasmas
+- Predição de movimento do Pacman
+
+**Classes Principais:**
+```python
+class ImprovedGhostAI:
+    def __init__(self, game_instance)           # Inicialização da IA
+    def get_manhattan_distance()               # Cálculo de distância Manhattan
+    def get_euclidean_distance()               # Cálculo de distância euclidiana
+    def find_path_bfs()                        # Algoritmo BFS para pathfinding
+    def get_best_direction_a_star()            # Algoritmo A* simplificado
+    def get_predicted_pacman_position()        # Predição de movimento
+    def get_ambush_target()                    # Cálculo de emboscada
+    def update_ghost_behavior()                # Atualização de comportamentos
+    def improved_ghost_intelligence()          # IA principal dos fantasmas
+    def get_cooperative_behavior()             # Comportamento cooperativo
+```
+
+**Padrões Utilizados:**
+- **Strategy Pattern**: Diferentes estratégias para cada fantasma
+- **State Pattern**: Estados de comportamento (scatter, chase, ambush, aggressive)
+- **Observer Pattern**: Monitoramento de posições e comportamentos
+- **Template Method**: Estrutura comum para algoritmos de pathfinding
+
+**Algoritmos Implementados:**
+- **BFS (Breadth-First Search)**: Para encontrar caminhos ótimos
+- **A* Simplificado**: Para decisões direcionais inteligentes
+- **Predição de Movimento**: Baseada na direção atual do Pacman
+- **Sistema Anti-Travamento**: Detecção e correção de loops infinitos
+
+### 5. Sistema de Constantes (`src/constants.py`)
 
 **Responsabilidades:**
 - Configurações centralizadas
@@ -218,6 +261,29 @@ class MenuSelector:
 - **Responsivo**: Atualiza em tempo real
 - **Extensível**: Fácil adição de novas opções
 
+### 6. Sistema de IA Avançado
+**Decisão**: IA separada e especializada para cada fantasma
+**Justificativa**: Comportamentos distintos e pathfinding inteligente
+
+```python
+# IA como componente especializado
+class ImprovedGhostAI:
+    def __init__(self, game_instance):
+        # Estados específicos para cada fantasma
+        self.ghost_states = {
+            'blue': {'mode': 'scatter', 'mode_timer': 0},
+            'orange': {'mode': 'chase', 'mode_timer': 60},
+            'pink': {'mode': 'ambush', 'mode_timer': 120},
+            'red': {'mode': 'aggressive', 'mode_timer': 180}
+        }
+```
+
+**Características:**
+- **Modular**: IA independente e reutilizável
+- **Inteligente**: Algoritmos de pathfinding avançados
+- **Adaptativo**: Comportamentos que mudam dinamicamente
+- **Performático**: Limitação de iterações para evitar lag
+
 ## Padrões de Performance
 
 ### 1. Otimização de Renderização
@@ -278,6 +344,31 @@ GAME_MAP = [
     ['.','o','.'],
     ['#','.','#']
 ]
+```
+
+### 5. Adicionando Novos Comportamentos de IA
+```python
+# Em game.py - ImprovedGhostAI
+class ImprovedGhostAI:
+    def get_ghost_target(self, ghost_color):
+        # Adicionar novo modo
+        elif state['mode'] == 'patrol':
+            return self.get_patrol_target(ghost_color)
+    
+    def get_patrol_target(self, ghost_color):
+        # Implementar novo comportamento
+        return patrol_points[ghost_color]
+```
+
+### 6. Modificando Algoritmos de Pathfinding
+```python
+# Em game.py - ImprovedGhostAI
+def get_best_direction_a_star(self, ghost_pos, target_pos, current_direction):
+    # Modificar heurística
+    distance = self.get_euclidean_distance(test_pos, target_pos)  # Usar euclidiana
+    # Adicionar novos fatores
+    danger_factor = self.calculate_danger_level(test_pos)
+    total_score = distance + direction_change_penalty + danger_factor
 ```
 
 ## Testes e Debug

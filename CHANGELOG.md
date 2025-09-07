@@ -2,6 +2,64 @@
 
 Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 
+## [1.3.0] - 2024-12-19
+
+### ✨ Adicionado
+- **Sistema de IA avançado para fantasmas**
+  - Classe `ImprovedGhostAI` com pathfinding inteligente
+  - Algoritmo BFS (Breadth-First Search) para encontrar caminhos ótimos
+  - Algoritmo A* simplificado para decisões direcionais mais inteligentes
+  - Sistema de predição de movimento do Pacman
+  - Comportamentos distintos para cada fantasma:
+    - 🔵 **Fantasma Azul**: Modo scatter (vai para cantos específicos)
+    - 🟠 **Fantasma Laranja**: Modo chase com distância inteligente
+    - 🩷 **Fantasma Rosa**: Modo ambush (intercepta o Pacman)
+    - 🔴 **Fantasma Vermelho**: Modo aggressive (perseguição direta)
+
+- **Sistema anti-travamento**
+  - Detecção automática de fantasmas presos
+  - Sistema de recuperação com direção aleatória forçada
+  - Histórico de posições para análise de movimento
+
+- **Comportamento cooperativo**
+  - Evita agrupamento excessivo entre fantasmas
+  - Sistema de distância mínima entre fantasmas
+  - Comportamento mais realista e desafiador
+
+- **Ciclos dinâmicos de comportamento**
+  - Alternância automática entre modos scatter e chase
+  - Timing personalizado para cada fantasma
+  - Comportamento mais próximo ao Pac-Man original
+
+### 🔧 Melhorado
+- **Inteligência dos fantasmas**
+  - Evita reversões desnecessárias de direção
+  - Pathfinding mais eficiente e inteligente
+  - Comportamento mais desafiador para o jogador
+  - Melhor integração com o sistema existente
+
+- **Performance**
+  - Limitação de iterações para evitar lag
+  - Otimização de algoritmos de pathfinding
+  - Sistema de cache para posições anteriores
+
+### 🏗️ Arquitetura
+- **Nova classe `ImprovedGhostAI`**
+  - Separação clara de responsabilidades
+  - Métodos especializados para diferentes funcionalidades
+  - Integração perfeita com o sistema existente
+
+- **Método `enhanced_ghost_intelligence`**
+  - Substitui o sistema de IA original
+  - Mantém compatibilidade total com funcionalidades existentes
+  - Suporte completo a múltiplos jogadores
+
+### 📚 Documentação
+- **README.md atualizado**
+  - Nova seção sobre sistema de IA avançado
+  - Documentação dos comportamentos de cada fantasma
+  - Explicação das melhorias implementadas
+
 ## [1.2.0] - 2024-12-19
 
 ### ✨ Adicionado
