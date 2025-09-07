@@ -94,6 +94,39 @@ DOT_POINTS = 1
 POWER_PELLET_POINTS = 5
 GHOST_POINTS = 10
 
+# Tipos de frutas
+FRUIT_CHERRY = 'C'
+FRUIT_STRAWBERRY = 'S'
+FRUIT_ORANGE = 'O'  # Tangerine.png
+FRUIT_APPLE = 'A'
+FRUIT_BELL = 'B'
+FRUIT_KEY = 'K'
+FRUIT_COCONUT = 'N'  # Green Coconut
+FRUIT_FLOWER = 'F'   # Strange Flower
+
+# Pontos das frutas
+CHERRY_POINTS = 100
+STRAWBERRY_POINTS = 200
+ORANGE_POINTS = 300
+APPLE_POINTS = 400
+BELL_POINTS = 500
+KEY_POINTS = 700
+COCONUT_POINTS = 1000
+FLOWER_POINTS = 2000
+
+# Posições das frutas no mapa - posições centralizadas em corredores
+# Removidas posições (13, 11) e (13, 15) que conflitam com spawn dos fantasmas
+FRUIT_POSITIONS = [
+    (3, 3),    # Corredor superior esquerdo centralizado
+    (24, 3),   # Corredor superior direito centralizado
+    (3, 23),   # Corredor inferior esquerdo centralizado
+    (24, 23),  # Corredor inferior direito centralizado
+    (7, 11),   # Corredor esquerdo central
+    (19, 11),  # Corredor direito central
+    (7, 15),   # Corredor esquerdo inferior
+    (19, 15),  # Corredor direito inferior
+]
+
 # Configurações de colisão
 COLLISION_DISTANCE = SCALE * 0.8  # Reduzido para colisão mais precisa
 HUNT_DISTANCE = SCALE * 10

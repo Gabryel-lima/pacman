@@ -2,6 +2,73 @@
 
 Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 
+## [1.4.0] - 2024-12-19
+
+### 🍒 Sistema de Frutas Coletáveis - Melhorias Completas
+
+#### ✨ Adicionado
+- **Sistema de raridade para frutas**
+  - 🍒 **Cherry** (100 pts) - 30% probabilidade - Comum
+  - 🍓 **Strawberry** (200 pts) - 25% probabilidade - Comum  
+  - 🍊 **Orange** (300 pts) - 20% probabilidade - Incomum
+  - 🍎 **Apple** (400 pts) - 15% probabilidade - Incomum
+  - 🔔 **Bell** (500 pts) - 5% probabilidade - Raro
+  - 🗝️ **Key** (700 pts) - 3% probabilidade - Raro
+  - 🥥 **Coconut** (1000 pts) - 1.5% probabilidade - Muito Raro
+  - 🌸 **Flower** (2000 pts) - 0.5% probabilidade - Lendário
+
+- **Sistema de spawn inteligente**
+  - Contador de frames separado para frutas (`fruit_frame_counter`)
+  - Spawn automático a cada 10 segundos (600 frames)
+  - Máximo de 2 frutas ativas simultaneamente
+  - Duração de 10 segundos por fruta
+
+- **Sistema de posicionamento seguro**
+  - Verificação automática de conflitos com spawn de fantasmas
+  - Método `_is_ghost_spawn_position()` para evitar sobreposições
+  - Posições centralizadas nos corredores para melhor visibilidade
+
+#### 🔧 Melhorado
+- **Carregamento de sprites**
+  - Todas as 8 sprites de frutas carregadas automaticamente
+  - Sistema de fallback com placeholders para sprites ausentes
+  - Sprites 20% maiores (1.2x o tamanho original) para melhor visibilidade
+
+- **Renderização otimizada**
+  - Centralização automática das frutas no grid
+  - Cálculo de offset para sprites maiores
+  - Renderização suave e bem posicionada
+
+- **Posicionamento das frutas**
+  - Posições centralizadas nos corredores
+  - Evita conflitos com spawn de fantasmas
+  - 8 posições estratégicas no mapa
+
+#### 🐛 Corrigido
+- **Problema de timing**
+  - Corrigido sistema de contagem de frames para frutas
+  - Eliminado conflito com `sprite_frame` que era resetado
+  - Spawn consistente e previsível
+
+- **Conflitos de posicionamento**
+  - Removidas posições (13, 11) e (13, 15) que conflitavam com spawn de fantasmas
+  - Sistema de verificação automática de posições seguras
+
+#### 📊 Detalhes Técnicos
+- **Métodos adicionados**:
+  - `_initialize_fruits()` - Inicialização do sistema de frutas
+  - `_load_fruit_sprites()` - Carregamento das sprites
+  - `_spawn_fruit()` - Spawn inteligente de frutas
+  - `_update_fruits()` - Atualização do estado das frutas
+  - `_select_fruit_by_rarity()` - Seleção baseada em probabilidades
+  - `_is_ghost_spawn_position()` - Verificação de conflitos
+  - `_get_fruit_sprite()` - Retorno da sprite correspondente
+  - `_get_fruit_points()` - Retorno dos pontos da fruta
+
+- **Constantes atualizadas**:
+  - `FRUIT_POSITIONS` - Posições centralizadas e seguras
+  - Sistema de raridade com probabilidades balanceadas
+
 ## [1.3.0] - 2024-12-19
 
 ### ✨ Adicionado

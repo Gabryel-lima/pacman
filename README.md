@@ -16,6 +16,8 @@ Uma implementação moderna do clássico jogo Pac-Man em Python usando pygame-ce
 - ⏱️ **Contagem regressiva** antes do início do jogo
 - 🧠 **IA avançada dos fantasmas** com pathfinding inteligente
 - 🎭 **Comportamentos distintos** para cada fantasma
+- 🍒 **Sistema de frutas coletáveis** com raridade e spawn inteligente
+- 🎲 **8 tipos de frutas** com sistema de probabilidades balanceado
 - 🏗️ **Código orientado a objetos** bem estruturado
 - 🎨 **Interface gráfica moderna** com pygame-ce
 
@@ -81,6 +83,7 @@ pyinstaller pacman.spec --clean
 - 📖 **[Índice da Documentação](docs/index.md)** - Navegação completa
 - 🚀 **[Guia de Início Rápido](docs/quick-start.md)** - Comece a jogar em 5 minutos
 - 🎮 **[Guia de Controles](docs/controles.md)** - Controles Xbox/PlayStation/genéricos
+- 🍒 **[Sistema de Frutas](docs/FRUIT_SYSTEM.md)** - Documentação completa do sistema de frutas
 - 📦 **[Guia de Build](docs/build.md)** - Criar executáveis para Windows/Linux
 - ⚙️ **[Instalação Detalhada](docs/instalacao.md)** - Instalação passo a passo
 - 🏗️ **[Arquitetura](docs/arquitetura.md)** - Documentação técnica
@@ -115,6 +118,21 @@ pacman/
 - **Sistema anti-travamento** para evitar fantasmas presos
 - **Comportamento cooperativo** entre fantasmas
 - **Ciclos dinâmicos** de comportamento (scatter ↔ chase)
+
+### 🍒 Sistema de Frutas Coletáveis
+- **8 tipos de frutas** com sistema de raridade:
+  - 🍒 **Cherry** (100 pts) - 30% - Comum
+  - 🍓 **Strawberry** (200 pts) - 25% - Comum
+  - 🍊 **Orange** (300 pts) - 20% - Incomum
+  - 🍎 **Apple** (400 pts) - 15% - Incomum
+  - 🔔 **Bell** (500 pts) - 5% - Raro
+  - 🗝️ **Key** (700 pts) - 3% - Raro
+  - 🥥 **Coconut** (1000 pts) - 1.5% - Muito Raro
+  - 🌸 **Flower** (2000 pts) - 0.5% - Lendário
+- **Spawn inteligente** a cada 10 segundos
+- **Posicionamento seguro** evitando conflitos com fantasmas
+- **Sprites otimizadas** 20% maiores para melhor visibilidade
+- **Sistema probabilístico** balanceado para gameplay envolvente
 
 ### 🎮 Sistema de Controles Avançado
 - **Detecção automática** de controles Xbox/PlayStation/genéricos

@@ -375,14 +375,145 @@ class PacMan:
         
         # Carregar sprites dos fantasmas
         self._load_ghost_sprites()
-        
+
+        # Carregar sprites das frutas
+        self._load_fruit_sprites()
+
         # Mapa do jogo
         self.map = [row[:] for row in GAME_MAP]  # Cópia do mapa
-        
+
+        # Inicializar frutas no mapa
+        self._initialize_fruits()
+
         # Sistema de controles
         self.controller_manager = ControllerManager()
         self.controller_connected = self.controller_manager.get_controller_count() > 0
         self.controller_index = 0  # Usar o primeiro controle conectado
+
+    def _initialize_fruits(self):
+        """Inicializa as frutas no mapa"""
+        self.active_fruits = {}  # Dicionário para frutas ativas: posição -> tipo
+        self.fruit_timer = 0
+        self.fruit_spawn_delay = 600  # Frames entre spawns de frutas (10 segundos a 60 FPS)
+        self.fruit_duration = 600  # Frames que fruta fica ativa (10 segundos)
+        # Sistema de raridade baseado em probabilidades
+        # Frutas mais valiosas são mais raras
+        self.fruit_rarity = {
+            FRUIT_CHERRY: 30,      # 30% - Comum
+            FRUIT_STRAWBERRY: 25,  # 25% - Comum
+            FRUIT_ORANGE: 20,      # 20% - Incomum
+            FRUIT_APPLE: 15,       # 15% - Incomum
+            FRUIT_BELL: 5,         # 5% - Raro
+            FRUIT_KEY: 3,          # 3% - Raro
+            FRUIT_COCONUT: 1.5,    # 1.5% - Muito Raro
+            FRUIT_FLOWER: 0.5      # 0.5% - Lendário
+        }
+        self.last_fruit_spawn_time = 0
+        self.fruit_frame_counter = 0  # Contador separado para frutas
+
+    def _spawn_fruit(self):
+        """Spawna uma fruta em uma posição aleatória"""
+        if not FRUIT_POSITIONS:
+            return
+
+        # Escolher uma posição aleatória disponível que não seja parede
+        available_positions = []
+        for pos in FRUIT_POSITIONS:
+            if pos not in self.active_fruits:
+                x, y = pos
+                # Verificar se a posição existe no mapa e não é parede
+                if (0 <= y < len(self.map) and 0 <= x < len(self.map[0]) and
+                    self.map[y][x] != WALL):
+                    # Verificar se a posição não está no spawn dos fantasmas
+                    if not self._is_ghost_spawn_position(x, y):
+                        available_positions.append(pos)
+
+        if available_positions:
+            pos = random.choice(available_positions)
+            fruit_type = self._select_fruit_by_rarity()
+            self.active_fruits[pos] = {
+                'type': fruit_type,
+                'spawn_time': self.fruit_frame_counter,
+                'duration': self.fruit_duration
+            }
+
+    def _select_fruit_by_rarity(self):
+        """Seleciona uma fruta baseada no sistema de raridade"""
+        # Criar lista de frutas com suas probabilidades
+        fruits = list(self.fruit_rarity.keys())
+        probabilities = list(self.fruit_rarity.values())
+        
+        # Selecionar fruta baseada na probabilidade
+        selected_fruit = random.choices(fruits, weights=probabilities, k=1)[0]
+        
+        return selected_fruit
+
+    def _is_ghost_spawn_position(self, x, y):
+        """Verifica se uma posição está no spawn dos fantasmas"""
+        # Posições dos fantasmas em coordenadas de grid
+        ghost_spawn_positions = [
+            (12, 13),    # Ghost Blue
+            (12, 14),    # Ghost Orange (arredondado de 14.5)
+            (14, 13),    # Ghost Pink
+            (14, 14),    # Ghost Red (arredondado de 14.5)
+            (13, 10),    # Posição central de spawn (quando fantasmas voltam)
+            (13, 11),    # Área próxima ao spawn
+            (13, 12),    # Área próxima ao spawn
+            (13, 13),    # Área próxima ao spawn
+            (13, 14),    # Área próxima ao spawn
+            (13, 15),    # Área próxima ao spawn
+        ]
+        
+        return (x, y) in ghost_spawn_positions
+
+    def _update_fruits(self):
+        """Atualiza o estado das frutas (spawn e expiração)"""
+        # Incrementar contador de frames das frutas
+        self.fruit_frame_counter += 1
+        current_time = self.fruit_frame_counter
+
+        # Spawn de nova fruta se necessário
+        if current_time - self.last_fruit_spawn_time >= self.fruit_spawn_delay:
+            if len(self.active_fruits) < 2:  # Máximo 2 frutas ativas
+                self._spawn_fruit()
+                self.last_fruit_spawn_time = current_time
+
+        # Remover frutas expiradas
+        expired_fruits = []
+        for pos, fruit_data in self.active_fruits.items():
+            if current_time - fruit_data['spawn_time'] >= fruit_data['duration']:
+                expired_fruits.append(pos)
+
+        for pos in expired_fruits:
+            del self.active_fruits[pos]
+
+    def _get_fruit_sprite(self, fruit_type):
+        """Retorna o sprite correspondente ao tipo de fruta"""
+        fruit_sprites = {
+            FRUIT_CHERRY: self.fruit_cherry,
+            FRUIT_STRAWBERRY: self.fruit_strawberry,
+            FRUIT_ORANGE: self.fruit_orange,
+            FRUIT_APPLE: self.fruit_apple,
+            FRUIT_BELL: self.fruit_bell,
+            FRUIT_KEY: self.fruit_key,
+            FRUIT_COCONUT: self.fruit_coconut,
+            FRUIT_FLOWER: self.fruit_flower
+        }
+        return fruit_sprites.get(fruit_type)
+
+    def _get_fruit_points(self, fruit_type):
+        """Retorna os pontos correspondentes ao tipo de fruta"""
+        fruit_points = {
+            FRUIT_CHERRY: CHERRY_POINTS,
+            FRUIT_STRAWBERRY: STRAWBERRY_POINTS,
+            FRUIT_ORANGE: ORANGE_POINTS,
+            FRUIT_APPLE: APPLE_POINTS,
+            FRUIT_BELL: BELL_POINTS,
+            FRUIT_KEY: KEY_POINTS,
+            FRUIT_COCONUT: COCONUT_POINTS,
+            FRUIT_FLOWER: FLOWER_POINTS
+        }
+        return fruit_points.get(fruit_type, 0)
         
         # Mapeamento de controles para jogadores
         self.player_controllers = {
@@ -458,10 +589,10 @@ class PacMan:
         """Carrega os sprites dos fantasmas"""
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         img_dir = os.path.join(base_dir, "img")
-        
+
         # Cores dos fantasmas
         ghost_colors = ['Blue', 'Orange', 'Pink', 'Red']
-        
+
         for color in ghost_colors:
             # Carregar sprites de movimento normal
             for frame in range(2):
@@ -482,7 +613,7 @@ class PacMan:
                     else:  # Red
                         placeholder.fill((255, 0, 0))
                     setattr(self, f"ghost_{color.lower()}_down_right_{frame}", placeholder)
-        
+
         # Carregar sprites de fantasma inofensivo
         for frame in range(2):
             sprite_path = os.path.join(img_dir, f"Harmless_Ghost_{frame}.png")
@@ -495,6 +626,38 @@ class PacMan:
                 placeholder = pg.Surface((self.scale * 1.3, self.scale * 1.3))
                 placeholder.fill((100, 100, 255))
                 setattr(self, f"ghost_harmless_{frame}", placeholder)
+
+    def _load_fruit_sprites(self):
+        """Carrega os sprites das frutas do diretório img"""
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        img_dir = os.path.join(base_dir, "img")
+
+        # Carregar sprites das frutas
+        fruit_sprites = {
+            'cherry': 'Cherry.png',
+            'strawberry': 'Strawberry.png',
+            'orange': 'Tangerine.png',  # Usando Tangerine.png como laranja
+            'apple': 'Apple.png',
+            'bell': 'Bell.png',
+            'key': 'Key.png',
+            'coconut': 'Green Coconut.png',
+            'flower': 'Strange Flower.png'
+        }
+
+        for fruit_name, filename in fruit_sprites.items():
+            sprite_path = os.path.join(img_dir, filename)
+            if os.path.exists(sprite_path):
+                sprite = pg.image.load(sprite_path)
+                # Aumentar o tamanho das frutas para 1.2x o tamanho normal
+                fruit_size = int(self.scale * 1.2)
+                scaled_sprite = pg.transform.scale(sprite, (fruit_size, fruit_size))
+                setattr(self, f"fruit_{fruit_name}", scaled_sprite)
+            else:
+                # Criar sprite placeholder simples se o arquivo não existir
+                fruit_size = int(self.scale * 1.2)
+                placeholder = pg.Surface((fruit_size, fruit_size))
+                placeholder.fill((255, 255, 255))  # Branco simples
+                setattr(self, f"fruit_{fruit_name}", placeholder)
     
     def clear_window(self):
         """Limpa a janela com a cor de fundo"""
@@ -654,7 +817,7 @@ class PacMan:
                 #    pg.draw.rect(self.window, self.white, (x * self.scale, y * self.scale, self.scale, self.scale))
                 if self.map[y][x] == EMPTY or self.map[y][x] == DOT or self.map[y][x] == POWER_PELLET:
                     pg.draw.rect(self.window, self.black, ((x * self.scale) - (self.scale / 2), (y * self.scale) - (self.scale / 2), self.scale * 1.5, self.scale * 1.5))
-        
+
         # Desenhar pontos e power pellets
         for y in range(len(self.map)):
             for x in range(len(self.map[0])):
@@ -662,6 +825,17 @@ class PacMan:
                     pg.draw.circle(self.window, self.white, ((x * self.scale) + (self.scale / 4), (y * self.scale) + (self.scale / 4)), self.scale / 5)
                 if self.map[y][x] == POWER_PELLET:
                     pg.draw.circle(self.window, self.white, ((x * self.scale) + (self.scale / 4), (y * self.scale) + (self.scale / 4)), self.scale / 2)
+
+        # Desenhar frutas ativas
+        for pos, fruit_data in self.active_fruits.items():
+            x, y = pos
+            fruit_sprite = self._get_fruit_sprite(fruit_data['type'])
+            if fruit_sprite:
+                # Centralizar a fruta no grid (ajustar para o tamanho maior)
+                fruit_size = int(self.scale * 1.2)
+                offset_x = (self.scale - fruit_size) // 2
+                offset_y = (self.scale - fruit_size) // 2
+                self.window.blit(fruit_sprite, (x * self.scale + offset_x, y * self.scale + offset_y))
     
     def animation_step(self):
         """Atualiza o frame de animação"""
@@ -775,6 +949,45 @@ class PacMan:
                             self.harmless_mode_ghost_pink = True
                             self.harmless_mode_ghost_red = True
                             break  # Sair do loop de jogadores se coletou o power pellet
+
+    def collect_fruits(self):
+        """Coleta frutas para todos os jogadores ativos"""
+        # Lista de posições dos jogadores ativos
+        active_players = [self.pac_man_pos]  # Player 1 sempre ativo
+
+        # Adicionar Player 2 se estiver ativo
+        if self.game_mode in ["Player 2", "Player 3"]:
+            active_players.append(self.pac_man_2_pos)
+
+        # Adicionar Player 3 se estiver ativo
+        if self.game_mode == "Player 3":
+            active_players.append(self.pac_man_3_pos)
+
+        # Verificar colisão com frutas ativas
+        collected_fruits = []
+        for pos, fruit_data in self.active_fruits.items():
+            x, y = pos
+            fruit_center_x = (x * self.scale) + (self.scale / 2)
+            fruit_center_y = (y * self.scale) + (self.scale / 2)
+            radius = self.scale / 2
+
+            # Verificar colisão com todos os jogadores ativos
+            for player_pos in active_players:
+                x_pac_man = player_pos[0] + (self.scale * 0.65)
+                y_pac_man = player_pos[1] + (self.scale * 0.65)
+
+                if (x_pac_man >= fruit_center_x - radius and x_pac_man <= fruit_center_x + radius and
+                    y_pac_man >= fruit_center_y - radius and y_pac_man <= fruit_center_y + radius):
+                    # Fruta coletada!
+                    fruit_points = self._get_fruit_points(fruit_data['type'])
+                    self.score += fruit_points
+                    collected_fruits.append(pos)
+                    break  # Sair do loop de jogadores se coletou a fruta
+
+        # Remover frutas coletadas
+        for pos in collected_fruits:
+            if pos in self.active_fruits:
+                del self.active_fruits[pos]
     
     def pacman_tunnel(self, position):
         """Implementa túneis laterais"""
@@ -1347,6 +1560,9 @@ class PacMan:
             self.sprite_speed = SPRITE_SPEED
             self.end_game = False
             self.map = [row[:] for row in GAME_MAP]
+
+            # Reinicializar frutas
+            self._initialize_fruits()
     
     def scoreboard(self):
         """Desenha a pontuação, vidas e modo de jogo"""
@@ -1533,6 +1749,9 @@ class PacMan:
         self.distance_ghost_red_to_pac_man = self.distance_ghost_to_pac_man(self.ghost_red_pos)
         self.map = [row[:] for row in GAME_MAP]
         self.game_mode = "Player 1"  # Reset para modo padrão
+
+        # Reinicializar frutas
+        self._initialize_fruits()
     
     def run(self):
         """Loop principal do jogo"""
@@ -1558,9 +1777,14 @@ class PacMan:
             self.clear_window()
             self.board()
             self.animation_step()
+
+            # Atualizar frutas (spawn e expiração)
+            self._update_fruits()
+
             self.player()
             self.ghost()
             self.collect_dots()
+            self.collect_fruits()  # Coletar frutas
             self.ghost_manager()
             self.ghost_and_pacman_collider()
             self.scoreboard()
